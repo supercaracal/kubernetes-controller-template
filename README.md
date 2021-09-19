@@ -4,7 +4,10 @@
 Kubernetes Controller Template
 ===============================================================================
 
-TBD
+```
+$ kind create cluster
+$ make apply-manifests
+```
 
 # See also
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder)

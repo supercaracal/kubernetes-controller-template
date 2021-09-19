@@ -73,7 +73,7 @@ clean-image:
 apply-manifests:
 	@kubectl --context=kind-kind apply -f config/controller.yaml
 	@kubectl --context=kind-kind apply -f config/crd.yaml
-	@kubectl --context=kind-kind apply -f config/sleep-foobar.yaml
+	@kubectl --context=kind-kind apply -f config/example-foobar.yaml
 
 mod-replace-kube: KUBE_LIB_VER := 1.22.1
 mod-replace-kube:
