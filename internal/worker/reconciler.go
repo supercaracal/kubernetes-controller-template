@@ -101,16 +101,14 @@ func (r *Reconciler) do(key string) error {
 		return err
 	}
 
-	klog.V(0).Infof(resource.Spec.Message)
-
+	klog.Info(resource.Spec.Message)
 	r.updateCustomResourceStatus(resource)
-
 	return nil
 }
 
 func (r *Reconciler) updateCustomResourceStatus(resource *customapiv1.FooBar) (err error) {
 	cpy := resource.DeepCopy()
 	cpy.Status.Succeeded = true
-	_, err := r.customClientSet.SupercaracalV1().FooBars(resource.Namespace).Update(context.TODO(), cpy, metav1.UpdateOptions{})
+	_, err = r.customClientSet.SupercaracalV1().FooBars(resource.Namespace).Update(context.TODO(), cpy, metav1.UpdateOptions{})
 	return
 }

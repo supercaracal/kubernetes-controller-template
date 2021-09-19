@@ -25,6 +25,8 @@ import (
 
 const (
 	defaultReconcileDuration = 10 * time.Second
+	componentName            = "kubernetes-controller-template"
+	resourceName             = "FooBars"
 )
 
 // CustomController is
@@ -45,8 +47,8 @@ func NewCustomController(kubeClientSet kubernetes.Interface, customClientSet cli
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClientSet.CoreV1().Events("")})
-	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "kubernetes-controller-template"})
-	wq := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "FooBars")
+	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: componentName})
+	wq := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), resourceName)
 
 	controller := CustomController{
 		customClientSet:      customClientSet,
@@ -73,7 +75,7 @@ func (c *CustomController) Run(stopCh <-chan struct{}) error {
 	defer utilruntime.HandleCrash()
 	defer c.workQueue.ShutDown()
 
-	klog.Info("Starting FooBar controller")
+	klog.Info("Starting controller")
 	klog.Info("Waiting for informer caches to sync")
 	if ok := cache.WaitForCacheSync(stopCh, c.jobSynced, c.customInformerSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")

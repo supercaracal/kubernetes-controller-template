@@ -68,7 +68,6 @@ func main() {
 	customInformerFactory := informers.NewSharedInformerFactory(customClient, time.Second*30)
 	customInformer := customInformerFactory.Supercaracal().V1().FooBars()
 	customController := controllers.NewCustomController(kubeClient, customClient, customInformer)
-	kubeInformerFactory.Start(stopCh)
 	customInformerFactory.Start(stopCh)
 	if err = customController.Run(stopCh); err != nil {
 		klog.Fatalf("Error running controller: %s", err.Error())
