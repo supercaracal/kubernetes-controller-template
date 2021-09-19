@@ -1,6 +1,7 @@
 SHELL    := /bin/bash -e -u -o pipefail
 ORG      := supercaracal
 REPO     := kubernetes-controller-template
+IMG_TAG  ?= latest
 TEMP_DIR := _tmp
 
 all: build test lint
@@ -57,17 +58,17 @@ clean:
 	@rm -f ${REPO} main
 
 build-image:
-	@docker build -t ${REPO}:${TEST_IMAGE_TAG} .
+	@docker build -t ${REPO}:${IMG_TAG} .
 	@docker image prune -f
 
 lint-image:
 	@docker run --rm -i hadolint/hadolint < Dockerfile
 
 run-container:
-	@docker run --env-file=.env --rm ${REPO}
+	@docker run --env-file=.env --rm ${REPO}:${IMG_TAG}
 
 clean-image:
-	@docker rmi -f ${REPO}:${TEST_IMAGE_TAG}
+	@docker rmi -f ${REPO}:${IMG_TAG}
 
 apply-manifests:
 	@kubectl --context=kind-kind apply -f config/controller.yaml
