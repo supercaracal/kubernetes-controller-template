@@ -6,7 +6,6 @@ import (
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -35,7 +34,7 @@ type CustomController struct {
 }
 
 // NewCustomController is
-func NewCustomController(kubeClientSet kubernetes.Interface, customClientSet clientset.Interface, customInformer informers.FooBarInformer) *CustomController {
+func NewCustomController(customClientSet clientset.Interface, customInformer informers.FooBarInformer) *CustomController {
 	utilruntime.Must(customscheme.AddToScheme(scheme.Scheme))
 	wq := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), resourceName)
 
@@ -70,17 +69,12 @@ func (c *CustomController) Run(stopCh <-chan struct{}) error {
 	}
 
 	klog.Info("Starting workers")
-	rw := workers.NewReconciler(
-		c.customClientSet,
-		c.customResourceLister,
-		c.workQueue,
-	)
-
+	rw := workers.NewReconciler(c.customClientSet, c.customResourceLister, c.workQueue)
 	go wait.Until(rw.Run, c.reconcileDuration, stopCh)
-
 	klog.Info("Started workers")
+
 	<-stopCh
-	klog.Info("Shutting down workers")
+	klog.Info("Shutting down controller")
 
 	return nil
 }

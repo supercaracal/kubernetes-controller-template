@@ -7,7 +7,6 @@ import (
 	"syscall"
 	"time"
 
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
@@ -37,11 +36,6 @@ func main() {
 		klog.Fatalf("Error building kubeconfig: %s", err.Error())
 	}
 
-	kubeClient, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		klog.Fatalf("Error building kubernetes clientset: %s", err.Error())
-	}
-
 	customClient, err := clientset.NewForConfig(cfg)
 	if err != nil {
 		klog.Fatalf("Error building custom clientset: %s", err.Error())
@@ -49,7 +43,7 @@ func main() {
 
 	customInformerFactory := informers.NewSharedInformerFactory(customClient, informerReSyncDuration)
 	customInformer := customInformerFactory.Supercaracal().V1().FooBars()
-	customController := controllers.NewCustomController(kubeClient, customClient, customInformer)
+	customController := controllers.NewCustomController(customClient, customInformer)
 	customInformerFactory.Start(stopCh)
 	if err = customController.Run(stopCh); err != nil {
 		klog.Fatalf("Error running controller: %s", err.Error())
