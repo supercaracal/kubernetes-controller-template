@@ -12,9 +12,7 @@ metadata:
 rules:
   - apiGroups:
       - supercaracal.example.com
-      - ""
     resources:
-      - events
       - foobars
     verbs:
       - "*"

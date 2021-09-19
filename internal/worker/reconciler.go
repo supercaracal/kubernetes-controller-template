@@ -7,7 +7,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/cri-api/pkg/errors"
 	"k8s.io/klog/v2"
@@ -17,25 +16,19 @@ import (
 	listers "github.com/supercaracal/kubernetes-controller-template/pkg/generated/listers/supercaracal/v1"
 )
 
-const (
-	defaultHistoryLimit int32 = 10
-)
-
 // Reconciler is
 type Reconciler struct {
 	customClientSet      clientset.Interface
 	customResourceLister listers.FooBarLister
 	workQueue            workqueue.RateLimitingInterface
-	recorder             record.EventRecorder
 }
 
 // NewReconciler is
-func NewReconciler(customClientSet clientset.Interface, customResourceLister listers.FooBarLister, workQueue workqueue.RateLimitingInterface, recorder record.EventRecorder) *Reconciler {
+func NewReconciler(customClientSet clientset.Interface, customResourceLister listers.FooBarLister, workQueue workqueue.RateLimitingInterface) *Reconciler {
 	return &Reconciler{
 		customClientSet:      customClientSet,
 		customResourceLister: customResourceLister,
 		workQueue:            workQueue,
-		recorder:             recorder,
 	}
 }
 

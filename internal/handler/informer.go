@@ -6,34 +6,36 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
 )
 
 // InformerHandler is
 type InformerHandler struct {
+	wq workqueue.RateLimitingInterface
 }
 
 // NewInformerHandler is
-func NewInformerHandler() *InformerHandler {
-	return &InformerHandler{}
+func NewInformerHandler(wq workqueue.RateLimitingInterface) *InformerHandler {
+	return &InformerHandler{wq: wq}
 }
 
 // OnAdd is
 func (h *InformerHandler) OnAdd(obj interface{}) {
-	handleObject(obj, "Added")
+	h.handleObject(obj, "Added")
 }
 
 // OnUpdate is
-func (h *InformerHandler) OnUpdate(old, new interface{}) {
-	handleObject(new, "Updated")
+func (h *InformerHandler) OnUpdate(before, after interface{}) {
+	h.handleObject(after, "Updated")
 }
 
 // OnDelete is
 func (h *InformerHandler) OnDelete(obj interface{}) {
-	handleObject(obj, "Deleted")
+	h.handleObject(obj, "Deleted")
 }
 
-func handleObject(obj interface{}, event string) {
+func (h *InformerHandler) handleObject(obj interface{}, event string) {
 	var object metav1.Object
 	var ok bool
 
@@ -54,4 +56,20 @@ func handleObject(obj interface{}, event string) {
 	}
 
 	klog.V(4).Infof("%s object %s", event, object.GetName())
+
+	if event == "Deleted" {
+		return
+	}
+
+	h.enqueueCustomResource(object)
+}
+
+func (h *InformerHandler) enqueueCustomResource(obj interface{}) {
+	key, err := cache.MetaNamespaceKeyFunc(obj)
+	if err != nil {
+		utilruntime.HandleError(err)
+		return
+	}
+
+	h.wq.Add(key)
 }
