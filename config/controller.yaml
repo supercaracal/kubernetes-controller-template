@@ -87,8 +87,6 @@ spec:
           env:
             - name: TZ
               value: "Asia/Tokyo"
-            - name: SELF_NAMESPACE
-              value: "default"
           resources:
             requests:
               cpu: 50m
