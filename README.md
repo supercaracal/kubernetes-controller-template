@@ -10,5 +10,6 @@ $ make apply-manifests
 ```
 
 # See also
+* [sample-controller](https://github.com/kubernetes/sample-controller)
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder)
 * [operator-sdk](https://github.com/operator-framework/operator-sdk)
