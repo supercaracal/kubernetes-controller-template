@@ -1,0 +1,79 @@
+SHELL    := /bin/bash -e -u -o pipefail
+ORG      := supercaracal
+REPO     := kubernetes-controller-template
+TEMP_DIR := _tmp
+
+all: build test lint
+
+${TEMP_DIR}:
+	@mkdir -p $@
+
+${TEMP_DIR}/codegen: CURRENT_DIR           := $(shell pwd)
+${TEMP_DIR}/codegen: GOBIN                 ?= $(shell go env GOPATH)/bin
+${TEMP_DIR}/codegen: GOENV                 += GOROOT=${CURRENT_DIR}/${TEMP_DIR}
+${TEMP_DIR}/codegen: LOG_LEVEL             ?= 1
+${TEMP_DIR}/codegen: API_VERSION           := v1
+${TEMP_DIR}/codegen: CODE_GEN_DIR          := github.com/${ORG}/${REPO}
+${TEMP_DIR}/codegen: CODE_GEN_INPUT        := ${CODE_GEN_DIR}/pkg/apis/${ORG}/${API_VERSION}
+${TEMP_DIR}/codegen: CODE_GEN_OUTPUT       := ${CODE_GEN_DIR}/pkg/generated
+${TEMP_DIR}/codegen: CODE_GEN_ARGS         += --output-base=${CURRENT_DIR}/${TEMP_DIR}/src
+${TEMP_DIR}/codegen: CODE_GEN_ARGS         += --go-header-file=${CURRENT_DIR}/${TEMP_DIR}/empty.txt
+${TEMP_DIR}/codegen: CODE_GEN_ARGS         += -v ${LOG_LEVEL}
+${TEMP_DIR}/codegen: CODE_GEN_DEEPC        := zz_generated.deepcopy
+${TEMP_DIR}/codegen: CODE_GEN_CLI_SET_NAME := versioned
+${TEMP_DIR}/codegen: ${TEMP_DIR} $(shell find pkg/apis/${ORG}/ -type f -name '*.go')
+	@touch -a ${TEMP_DIR}/empty.txt
+	@mkdir -p ${TEMP_DIR}/src/${CODE_GEN_DIR}
+	@ln -sf ${CURRENT_DIR}/pkg ${TEMP_DIR}/src/${CODE_GEN_DIR}/
+	@# https://github.com/kubernetes/gengo/blob/master/args/args.go
+	@# https://github.com/kubernetes/code-generator/tree/master/cmd
+	${GOENV} ${GOBIN}/deepcopy-gen ${CODE_GEN_ARGS} --input-dirs=${CODE_GEN_INPUT} --bounding-dirs=${CODE_GEN_INPUT} --output-file-base=${CODE_GEN_DEEPC}
+	${GOENV} ${GOBIN}/client-gen   ${CODE_GEN_ARGS} --input=${CODE_GEN_INPUT}      --output-package=${CODE_GEN_OUTPUT}/clientset --input-base="" --clientset-name=${CODE_GEN_CLI_SET_NAME}
+	${GOENV} ${GOBIN}/lister-gen   ${CODE_GEN_ARGS} --input-dirs=${CODE_GEN_INPUT} --output-package=${CODE_GEN_OUTPUT}/listers
+	${GOENV} ${GOBIN}/informer-gen ${CODE_GEN_ARGS} --input-dirs=${CODE_GEN_INPUT} --output-package=${CODE_GEN_OUTPUT}/informers --versioned-clientset-package=${CODE_GEN_OUTPUT}/clientset/${CODE_GEN_CLI_SET_NAME} --listers-package=${CODE_GEN_OUTPUT}/listers
+	@touch $@
+
+codegen: ${TEMP_DIR}/codegen
+
+build: GOOS        ?= $(shell go env GOOS)
+build: GOARCH      ?= $(shell go env GOARCH)
+build: CGO_ENABLED ?= $(shell go env CGO_ENABLED)
+build: codegen
+	GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=${CGO_ENABLED} go build -ldflags="-s -w" -trimpath -tags timetzdata -o ${REPO}
+
+test:
+	@go clean -testcache
+	@go test -race ./...
+
+lint:
+	@go vet ./...
+	@golint -set_exit_status ./...
+
+run: TZ := Asia/Tokyo
+run:
+	@TZ=${TZ} ./${REPO} --kubeconfig=$$HOME/.kube/config
+
+clean:
+	@rm -f ${REPO} main
+
+build-image:
+	@docker build -t ${REPO}:${TEST_IMAGE_TAG} .
+	@docker image prune -f
+
+lint-image:
+	@docker run --rm -i hadolint/hadolint < Dockerfile
+
+run-container:
+	@docker run --env-file=.env --rm ${REPO}
+
+clean-image:
+	@docker rmi -f ${REPO}:${TEST_IMAGE_TAG}
+
+apply-manifests:
+	@kubectl --context=kind-kind apply -f config/controller.yaml
+	@kubectl --context=kind-kind apply -f config/crd.yaml
+	@kubectl --context=kind-kind apply -f config/sleep-foobar.yaml
+
+mod-replace-kube: KUBE_LIB_VER := 1.22.1
+mod-replace-kube:
+	@./go_mod_replace.sh ${KUBE_LIB_VER}
