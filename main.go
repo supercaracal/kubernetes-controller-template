@@ -17,32 +17,14 @@ import (
 	informers "github.com/supercaracal/kubernetes-controller-template/pkg/generated/informers/externalversions"
 )
 
+const (
+	informerReSyncDuration = 5 * time.Second
+)
+
 var (
 	masterURL  string
 	kubeconfig string
 )
-
-func setupSignalHandler() <-chan struct{} {
-	stop := make(chan struct{})
-	c := make(chan os.Signal, 2)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-c
-		close(stop)
-		<-c
-		os.Exit(1)
-	}()
-
-	return stop
-}
-
-func buildConfig(masterURL, kubeconfig string) (*rest.Config, error) {
-	if kubeconfig == "" {
-		return rest.InClusterConfig()
-	}
-
-	return clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
-}
 
 func main() {
 	klog.InitFlags(nil)
@@ -65,7 +47,7 @@ func main() {
 		klog.Fatalf("Error building custom clientset: %s", err.Error())
 	}
 
-	customInformerFactory := informers.NewSharedInformerFactory(customClient, time.Second*30)
+	customInformerFactory := informers.NewSharedInformerFactory(customClient, informerReSyncDuration)
 	customInformer := customInformerFactory.Supercaracal().V1().FooBars()
 	customController := controllers.NewCustomController(kubeClient, customClient, customInformer)
 	customInformerFactory.Start(stopCh)
@@ -88,4 +70,26 @@ func init() {
 		"",
 		"Path to a kubeconfig. Only required if out-of-cluster.",
 	)
+}
+
+func setupSignalHandler() <-chan struct{} {
+	stop := make(chan struct{})
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		close(stop)
+		<-c
+		os.Exit(1)
+	}()
+
+	return stop
+}
+
+func buildConfig(masterURL, kubeconfig string) (*rest.Config, error) {
+	if kubeconfig == "" {
+		return rest.InClusterConfig()
+	}
+
+	return clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 }

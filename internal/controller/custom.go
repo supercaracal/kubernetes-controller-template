@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	defaultReconcileDuration = 2 * time.Second
+	defaultReconcileDuration = 5 * time.Second
 	resourceName             = "FooBars"
 )
 
