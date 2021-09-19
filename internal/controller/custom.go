@@ -32,7 +32,6 @@ const (
 // CustomController is
 type CustomController struct {
 	customClientSet      clientset.Interface
-	jobSynced            cache.InformerSynced
 	customResourceLister listers.FooBarLister
 	customInformerSynced cache.InformerSynced
 	workQueue            workqueue.RateLimitingInterface
@@ -77,7 +76,7 @@ func (c *CustomController) Run(stopCh <-chan struct{}) error {
 
 	klog.Info("Starting controller")
 	klog.Info("Waiting for informer caches to sync")
-	if ok := cache.WaitForCacheSync(stopCh, c.jobSynced, c.customInformerSynced); !ok {
+	if ok := cache.WaitForCacheSync(stopCh, c.customInformerSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
