@@ -44,16 +44,36 @@ jobs:
       - name: Test
         run: make test
 
-      - name: Lint docker image
+      - name: Lint container image
         run: make lint-image
-        if: runner.os == 'Linux'
-
-      - name: Build docker image
-        run: make build-image
         if: runner.os == 'Linux'
 
       - name: Create cluster with Kind
         run: kind create cluster
+        if: runner.os == 'Linux'
 
       - name: Apply manifests
-        run: make apply-manifests # TODO: Use local-built image
+        run: make apply-manifests
+        if: runner.os == 'Linux'
+
+      - name: Build container image
+        run: make build-image
+        if: runner.os == 'Linux'
+
+      - name: Start port forwarding for container registry
+        run: make port-forward &
+        if: runner.os == 'Linux'
+
+      - name: Push container image
+        run: make push-image
+        if: runner.os == 'Linux'
+
+      - name: Waiting for the pod to be ready
+        run: sleep 30
+        if: runner.os == 'Linux'
+
+      - name: Get pod logs
+        run: |
+          name=$(kubectl --context=kind-kind get pods -o json | jq -r '.items[] | .metadata.name' | grep controller)
+          kubectl --context=kind-kind logs $name
+        if: runner.os == 'Linux'

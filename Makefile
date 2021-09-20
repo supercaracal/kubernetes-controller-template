@@ -1,7 +1,9 @@
 SHELL    := /bin/bash -e -u -o pipefail
+TZ       := Asia/Tokyo
 ORG      := supercaracal
 REPO     := kubernetes-controller-template
-IMG_TAG  ?= latest
+IMG_TAG  := latest
+REGISTRY := 127.0.0.1:5000
 TEMP_DIR := _tmp
 
 all: build test lint
@@ -50,7 +52,6 @@ lint:
 	@go vet ./...
 	@golint -set_exit_status ./...
 
-run: TZ := Asia/Tokyo
 run:
 	@TZ=${TZ} ./${REPO} --kubeconfig=$$HOME/.kube/config
 
@@ -64,16 +65,21 @@ build-image:
 lint-image:
 	@docker run --rm -i hadolint/hadolint < Dockerfile
 
-run-container:
-	@docker run --env-file=.env --rm ${REPO}:${IMG_TAG}
+port-forward:
+	@kubectl --context=kind-kind port-forward service/registry 5000:5000
+
+push-image:
+	@docker tag ${REPO}:${IMG_TAG} ${REGISTRY}/${REPO}:${IMG_TAG}
+	@docker push ${REGISTRY}/${REPO}:${IMG_TAG}
 
 clean-image:
-	@docker rmi -f ${REPO}:${IMG_TAG}
+	@docker rmi -f ${REPO}:${IMG_TAG} ${REGISTRY}/${REPO}:${IMG_TAG}
 
 apply-manifests:
-	@kubectl --context=kind-kind apply -f config/controller.yaml
+	@kubectl --context=kind-kind apply -f config/registry.yaml
 	@kubectl --context=kind-kind apply -f config/crd.yaml
 	@kubectl --context=kind-kind apply -f config/example-foobar.yaml
+	@kubectl --context=kind-kind apply -f config/controller.yaml
 
 mod-replace-kube: KUBE_LIB_VER := 1.22.1
 mod-replace-kube:

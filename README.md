@@ -7,6 +7,9 @@ Kubernetes Controller Template
 ```
 $ kind create cluster
 $ make apply-manifests
+$ make build-image
+$ make port-forward &
+$ make push-image
 ```
 
 # See also

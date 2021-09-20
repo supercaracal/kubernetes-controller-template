@@ -83,7 +83,7 @@ spec:
       serviceAccountName: controller
       containers:
         - name: main
-          image: ghcr.io/supercaracal/kubernetes-controller-template:latest
+          image: 127.0.0.1:32123/kubernetes-controller-template:latest
           env:
             - name: TZ
               value: "Asia/Tokyo"
