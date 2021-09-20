@@ -3,6 +3,7 @@ module github.com/supercaracal/kubernetes-controller-template
 go 1.17
 
 require (
+	github.com/google/go-cmp v0.5.5
 	k8s.io/apimachinery v0.22.1
 	k8s.io/client-go v0.0.0-00010101000000-000000000000
 	k8s.io/cri-api v0.0.0-00010101000000-000000000000
@@ -15,7 +16,6 @@ require (
 	github.com/go-logr/logr v1.0.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/go-cmp v0.5.5 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/googleapis/gnostic v0.5.5 // indirect
 	github.com/imdario/mergo v0.3.5 // indirect

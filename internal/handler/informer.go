@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 
+	"github.com/google/go-cmp/cmp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
@@ -27,7 +28,10 @@ func (h *InformerHandler) OnAdd(obj interface{}) {
 
 // OnUpdate is
 func (h *InformerHandler) OnUpdate(before, after interface{}) {
-	h.tryToHandleObject(after, "Updated")
+	if diff := cmp.Diff(before, after); diff != "" {
+		klog.Infof("\n%s", diff)
+		h.tryToHandleObject(after, "Updated")
+	}
 }
 
 // OnDelete is
