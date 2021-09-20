@@ -99,7 +99,7 @@ jobs:
             sleep 3
           done
 
-      - name: Print logs of the pod
+      - name: Get pod logs
         run: |
           name=$(kubectl --context=kind-kind get pods -o json | jq -r '.items[] | .metadata.name' | grep controller)
-          kubectl --context=kind-kind logs $name
+          kubectl --context=kind-kind logs $name | tee /dev/stderr | grep 'Hello world'
