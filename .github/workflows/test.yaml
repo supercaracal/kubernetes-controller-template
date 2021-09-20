@@ -10,19 +10,14 @@ defaults:
   run:
     shell: bash
 jobs:
-  prepare:
-    name: Prepare
-    timeout-minutes: 5
+  code:
+    name: Code
+    timeout-minutes: 15
     runs-on: "ubuntu-latest"
     steps:
       - name: Check out code
         uses: actions/checkout@v2
-  build-code:
-    name: Build Code
-    needs: prepare
-    timeout-minutes: 10
-    runs-on: "ubuntu-latest"
-    steps:
+
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
@@ -56,36 +51,30 @@ jobs:
 
       - name: Build
         run: make build
-  test-code:
-    name: Test Code
-    needs: build-code
-    timeout-minutes: 10
-    runs-on: "ubuntu-latest"
-    steps:
-      - name: Test
-        run: make test
-  lint-code:
-    name: Lint Code
-    needs: build-code
-    timeout-minutes: 10
-    runs-on: "ubuntu-latest"
-    steps:
+
       - name: Lint
         run: make lint
+
+      - name: Test
+        run: make test
   lint-image:
     name: Lint Image
-    needs: prepare
-    timeout-minutes: 10
+    timeout-minutes: 5
     runs-on: "ubuntu-latest"
     steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
       - name: Lint container image
         run: make lint-image
   build-image:
     name: Build Image
-    needs: prepare
     timeout-minutes: 15
     runs-on: "ubuntu-latest"
     steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
       - name: Create cluster with Kind
         run: kind create cluster
 
