@@ -1,5 +1,6 @@
 ---
 # @see https://help.github.com/ja/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions
+# @see https://github.com/actions/virtual-environments
 name: Test
 on:
   push:
@@ -8,7 +9,7 @@ on:
 jobs:
   test:
     name: Test
-    timeout-minutes: 15
+    timeout-minutes: 20
     strategy:
       matrix:
         os: ["ubuntu-latest"]
@@ -50,3 +51,9 @@ jobs:
       - name: Build docker image
         run: make build-image
         if: runner.os == 'Linux'
+
+      - name: Create cluster with Kind
+        run: kind create cluster
+
+      - name: Apply manifests
+        run: make apply-manifests # TODO: Use local-built image
