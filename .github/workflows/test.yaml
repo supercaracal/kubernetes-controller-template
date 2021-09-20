@@ -6,18 +6,14 @@ on:
   push:
     branches:
       - "*"
+defaults:
+  run:
+    shell: bash
 jobs:
   code:
     name: Code
     timeout-minutes: 15
-    strategy:
-      matrix:
-        os: ["ubuntu-latest"]
-        go-ver: ["1.17"]
-    runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash
+    runs-on: "ubuntu-latest"
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -25,7 +21,29 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: ${{ matrix.go-ver }}
+          go-version: "1.17"
+
+      - name: Check out paths
+        id: go-cache-paths
+        run: |
+          echo "::set-output name=go-cache::$(go env GOCACHE)"
+          echo "::set-output name=go-mod-cache::$(go env GOMODCACHE)"
+
+      - name: Cache GOCACHE
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.go-cache-paths.outputs.go-cache }}
+          key: ${{ runner.os }}-go-cache-${{ hashFiles('go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-cache-
+
+      - name: Cache GOMODCACHE
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.go-cache-paths.outputs.go-mod-cache }}
+          key: ${{ runner.os }}-go-mod-cache-${{ hashFiles('go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-mod-cache-
 
       - name: Get dependencies
         run: |
@@ -46,10 +64,7 @@ jobs:
   image:
     name: Image
     timeout-minutes: 15
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
+    runs-on: "ubuntu-latest"
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -81,7 +96,7 @@ jobs:
               break
             fi
             echo 'Waiting for Redis sentinel to be ready...'
-            sleep 2
+            sleep 3
           done
 
       - name: Print logs of the pod
