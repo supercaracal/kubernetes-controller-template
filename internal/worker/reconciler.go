@@ -44,8 +44,7 @@ func (r *Reconciler) processNextWorkItem() bool {
 		return false
 	}
 
-	err := r.exec(obj)
-	if err != nil {
+	if err := r.exec(obj); err != nil {
 		utilruntime.HandleError(err)
 		return true
 	}
@@ -61,8 +60,7 @@ func (r *Reconciler) exec(obj interface{}) error {
 
 	if key, ok = obj.(string); !ok {
 		r.workQueue.Forget(obj)
-		utilruntime.HandleError(fmt.Errorf("expected string in workqueue but got %#v", obj))
-		return nil
+		return fmt.Errorf("expected string in workqueue but got %#v", obj)
 	}
 
 	if err := r.do(key); err != nil {
@@ -71,32 +69,26 @@ func (r *Reconciler) exec(obj interface{}) error {
 	}
 
 	r.workQueue.Forget(obj)
-
 	return nil
 }
 
 func (r *Reconciler) do(key string) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", key))
-		return nil
+		return fmt.Errorf("invalid resource key: %s: %w", key, err)
 	}
 
 	resource, err := r.customResourceLister.FooBars(namespace).Get(name)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			utilruntime.HandleError(
-				fmt.Errorf("custom resource '%s' in work queue no longer exists", key),
-			)
-			return nil
+			return fmt.Errorf("custom resource '%s' in work queue no longer exists: %w", key, err)
 		}
 
 		return err
 	}
 
 	klog.Info(resource.Spec.Message)
-	r.updateCustomResourceStatus(resource)
-	return nil
+	return r.updateCustomResourceStatus(resource)
 }
 
 func (r *Reconciler) updateCustomResourceStatus(resource *customapiv1.FooBar) (err error) {

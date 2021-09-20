@@ -22,54 +22,58 @@ func NewInformerHandler(wq workqueue.RateLimitingInterface) *InformerHandler {
 
 // OnAdd is
 func (h *InformerHandler) OnAdd(obj interface{}) {
-	h.handleObject(obj, "Added")
+	h.tryToHandleObject(obj, "Added")
 }
 
 // OnUpdate is
 func (h *InformerHandler) OnUpdate(before, after interface{}) {
-	h.handleObject(after, "Updated")
+	h.tryToHandleObject(after, "Updated")
 }
 
 // OnDelete is
 func (h *InformerHandler) OnDelete(obj interface{}) {
-	h.handleObject(obj, "Deleted")
+	h.tryToHandleObject(obj, "Deleted")
 }
 
-func (h *InformerHandler) handleObject(obj interface{}, event string) {
+func (h *InformerHandler) tryToHandleObject(obj interface{}, event string) {
+	if err := h.handleObject(obj, event); err != nil {
+		utilruntime.HandleError(err)
+	}
+}
+
+func (h *InformerHandler) handleObject(obj interface{}, event string) error {
 	var object metav1.Object
 	var ok bool
 
 	if object, ok = obj.(metav1.Object); !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
-			utilruntime.HandleError(fmt.Errorf("error decoding object, invalid type"))
-			return
+			return fmt.Errorf("error decoding object, invalid type")
 		}
 
 		object, ok = tombstone.Obj.(metav1.Object)
 		if !ok {
-			utilruntime.HandleError(fmt.Errorf("error decoding object tombstone, invalid type"))
-			return
+			return fmt.Errorf("error decoding object tombstone, invalid type")
 		}
 
-		klog.V(4).Infof("Recovered deleted object '%s' from tombstone", object.GetName())
+		klog.Infof("Recovered deleted object '%s' from tombstone", object.GetName())
 	}
 
-	klog.V(4).Infof("%s object %s", event, object.GetName())
-
+	klog.Infof("%s object %s", event, object.GetName())
 	if event == "Deleted" {
-		return
+		return nil
 	}
 
-	h.enqueueCustomResource(object)
+	klog.Infof("Enqueue %s to work queue", object.GetName())
+	return h.enqueueCustomResource(object)
 }
 
-func (h *InformerHandler) enqueueCustomResource(obj interface{}) {
+func (h *InformerHandler) enqueueCustomResource(obj interface{}) error {
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
-		utilruntime.HandleError(err)
-		return
+		return err
 	}
 
 	h.wq.Add(key)
+	return nil
 }
