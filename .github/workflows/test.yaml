@@ -9,13 +9,11 @@ on:
 defaults:
   run:
     shell: bash
-  go-ver: "1.17"
-  os: "ubuntu-latest"
 jobs:
   prepare:
     name: Prepare
     timeout-minutes: 5
-    runs-on: ${{ defaults.os }}
+    runs-on: "ubuntu-latest"
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -23,12 +21,12 @@ jobs:
     name: Build Code
     needs: prepare
     timeout-minutes: 10
-    runs-on: ${{ defaults.os }}
+    runs-on: "ubuntu-latest"
     steps:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: ${{ defaults.go-ver }}
+          go-version: "1.17"
 
       - name: Check out paths
         id: go-cache-paths
@@ -62,7 +60,7 @@ jobs:
     name: Test Code
     needs: build-code
     timeout-minutes: 10
-    runs-on: ${{ defaults.os }}
+    runs-on: "ubuntu-latest"
     steps:
       - name: Test
         run: make test
@@ -70,7 +68,7 @@ jobs:
     name: Lint Code
     needs: build-code
     timeout-minutes: 10
-    runs-on: ${{ defaults.os }}
+    runs-on: "ubuntu-latest"
     steps:
       - name: Lint
         run: make lint
@@ -78,7 +76,7 @@ jobs:
     name: Lint Image
     needs: prepare
     timeout-minutes: 10
-    runs-on: ${{ defaults.os }}
+    runs-on: "ubuntu-latest"
     steps:
       - name: Lint container image
         run: make lint-image
@@ -86,7 +84,7 @@ jobs:
     name: Build Image
     needs: prepare
     timeout-minutes: 15
-    runs-on: ${{ defaults.os }}
+    runs-on: "ubuntu-latest"
     steps:
       - name: Create cluster with Kind
         run: kind create cluster
