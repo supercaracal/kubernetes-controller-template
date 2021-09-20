@@ -34,12 +34,16 @@ jobs:
         with:
           path: ${{ steps.go-cache-paths.outputs.go-cache }}
           key: ${{ runner.os }}-go-cache-${{ hashFiles('go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-cache-
 
       - name: Cache GOMODCACHE
         uses: actions/cache@v2
         with:
           path: ${{ steps.go-cache-paths.outputs.go-mod-cache }}
           key: ${{ runner.os }}-go-mod-cache-${{ hashFiles('go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-mod-cache-
 
       - name: Get dependencies
         run: |
@@ -57,9 +61,9 @@ jobs:
 
       - name: Test
         run: make test
-  lint-image:
-    name: Lint Image
-    timeout-minutes: 5
+  image:
+    name: Image
+    timeout-minutes: 15
     runs-on: "ubuntu-latest"
     steps:
       - name: Check out code
@@ -67,13 +71,6 @@ jobs:
 
       - name: Lint container image
         run: make lint-image
-  build-image:
-    name: Build Image
-    timeout-minutes: 15
-    runs-on: "ubuntu-latest"
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v2
 
       - name: Create cluster with Kind
         run: kind create cluster
