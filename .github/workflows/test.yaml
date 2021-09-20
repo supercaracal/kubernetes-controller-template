@@ -6,57 +6,88 @@ on:
   push:
     branches:
       - "*"
+defaults:
+  run:
+    shell: bash
+  go-ver: "1.17"
+  os: "ubuntu-latest"
 jobs:
-  code:
-    name: Code
-    timeout-minutes: 15
-    strategy:
-      matrix:
-        os: ["ubuntu-latest"]
-        go-ver: ["1.17"]
-    runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash
+  prepare:
+    name: Prepare
+    timeout-minutes: 5
+    runs-on: ${{ defaults.os }}
     steps:
       - name: Check out code
         uses: actions/checkout@v2
-
+  build-code:
+    name: Build Code
+    needs: prepare
+    timeout-minutes: 10
+    runs-on: ${{ defaults.os }}
+    steps:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: ${{ matrix.go-ver }}
+          go-version: ${{ defaults.go-ver }}
+
+      - name: Check out paths
+        id: go-cache-paths
+        run: |
+          echo "::set-output name=go-cache::$(go env GOCACHE)"
+          echo "::set-output name=go-mod-cache::$(go env GOMODCACHE)"
+
+      - name: Cache GOCACHE
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.go-cache-paths.outputs.go-cache }}
+          key: ${{ runner.os }}-go-cache-${{ hashFiles('go.sum') }}
+
+      - name: Cache GOMODCACHE
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.go-cache-paths.outputs.go-mod-cache }}
+          key: ${{ runner.os }}-go-mod-cache-${{ hashFiles('go.sum') }}
 
       - name: Get dependencies
         run: |
-          go install golang.org/x/lint/golint@latest
-          go install k8s.io/code-generator/...@latest
+          go install golang.org/x/lint/golint
+          go install k8s.io/code-generator/...
 
       - name: Generate several codes
         run: make codegen
 
       - name: Build
         run: make build
-
-      - name: Lint
-        run: make lint
-
+  test-code:
+    name: Test Code
+    needs: build-code
+    timeout-minutes: 10
+    runs-on: ${{ defaults.os }}
+    steps:
       - name: Test
         run: make test
-  image:
-    name: Image
-    timeout-minutes: 15
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
+  lint-code:
+    name: Lint Code
+    needs: build-code
+    timeout-minutes: 10
+    runs-on: ${{ defaults.os }}
     steps:
-      - name: Check out code
-        uses: actions/checkout@v2
-
+      - name: Lint
+        run: make lint
+  lint-image:
+    name: Lint Image
+    needs: prepare
+    timeout-minutes: 10
+    runs-on: ${{ defaults.os }}
+    steps:
       - name: Lint container image
         run: make lint-image
-
+  build-image:
+    name: Build Image
+    needs: prepare
+    timeout-minutes: 15
+    runs-on: ${{ defaults.os }}
+    steps:
       - name: Create cluster with Kind
         run: kind create cluster
 
@@ -81,7 +112,7 @@ jobs:
               break
             fi
             echo 'Waiting for Redis sentinel to be ready...'
-            sleep 2
+            sleep 3
           done
 
       - name: Print logs of the pod
