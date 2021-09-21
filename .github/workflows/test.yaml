@@ -104,10 +104,11 @@ jobs:
         run: |
           make build-image
           docker save golang > $IMAGE_CACHE_DIR/golang.tar
-          docker images
-          echo "$(docker images -q -f dangling=$TRUE_STR)"
-          docker save $(docker images -q -f dangling=$TRUE_STR) > $IMAGE_CACHE_DIR/dangling.tar
           docker save kubernetes-controller-template > $IMAGE_CACHE_DIR/kubernetes-controller-template.tar
+          danglings=$(docker images -q -f dangling=$TRUE_STR)
+          for id in $danglings; do
+            docker save $id > $IMAGE_CACHE_DIR/dangling_$id.tar
+          done
         env:
           TRUE_STR: "true"
 
