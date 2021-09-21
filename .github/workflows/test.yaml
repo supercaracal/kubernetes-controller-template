@@ -84,7 +84,7 @@ jobs:
 
       - name: Load container image cache
         run: |
-          for f in "$(ls $IMAGE_CACHE_DIR)"; do
+          for f in $(ls $IMAGE_CACHE_DIR); do
             docker load --input=$f
           done
 
