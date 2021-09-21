@@ -95,7 +95,7 @@ jobs:
             if [[ $status = 'Running' ]]; then
               break
             fi
-            echo 'Waiting for Redis sentinel to be ready...'
+            echo 'Waiting for the pod to be ready...'
             sleep 3
           done
 
