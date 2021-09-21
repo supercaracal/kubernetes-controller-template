@@ -4,6 +4,8 @@
 Kubernetes Controller Template
 ===============================================================================
 
+This controller has a feature to log a message declared by manifest.
+
 ```
 $ kind create cluster
 $ make apply-manifests
