@@ -104,6 +104,7 @@ jobs:
         run: |
           make build-image
           docker save golang > $IMAGE_CACHE_DIR/golang.tar
+          docker save $(docker images -q -f dangling=true) > $IMAGE_CACHE_DIR/dangling.tar
           docker save kubernetes-controller-template > $IMAGE_CACHE_DIR/kubernetes-controller-template.tar
 
       - name: Start port forwarding for container registry
