@@ -86,7 +86,7 @@ jobs:
         run: |
           ls -la $IMAGE_CACHE_DIR
           for f in $(ls $IMAGE_CACHE_DIR); do
-            docker load --input=$f
+            docker load < $IMAGE_CACHE_DIR/$f
           done
 
       - name: Lint container image
