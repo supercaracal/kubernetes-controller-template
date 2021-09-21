@@ -65,12 +65,33 @@ jobs:
     name: Image
     timeout-minutes: 15
     runs-on: "ubuntu-latest"
+    env:
+      IMAGE_CACHE_DIR: ~/_tmp/image_cache
     steps:
       - name: Check out code
         uses: actions/checkout@v2
 
+      - name: Create cache directory
+        run: mkdir -p $IMAGE_CACHE_DIR
+
+      - name: Cache container images
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.IMAGE_CACHE_DIR }}
+          key: ${{ runner.os }}-image-cache-${{ hashFiles('Dockerfile', 'go.sum', '*.go', '**/*.go') }}
+          restore-keys: |
+            ${{ runner.os }}-image-cache-
+
+      - name: Load container image cache
+        run: |
+          for f in "$(ls $IMAGE_CACHE_DIR)"; do
+            docker load --input=$f
+          done
+
       - name: Lint container image
-        run: make lint-image
+        run: |
+          make lint-image
+          docker save --output=$IMAGE_CACHE_DIR/hadolint.tar hadolint/hadolint:latest
 
       - name: Create cluster with Kind
         run: kind create cluster
@@ -79,7 +100,9 @@ jobs:
         run: make apply-manifests
 
       - name: Build container image
-        run: make build-image
+        run: |
+          make build-image
+          docker save --output=$IMAGE_CACHE_DIR/kubernetes-controller-template.tar kubernetes-controller-template:latest
 
       - name: Start port forwarding for container registry
         run: make port-forward &

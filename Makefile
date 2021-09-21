@@ -60,7 +60,6 @@ clean:
 
 build-image:
 	@docker build -t ${REPO}:${IMG_TAG} .
-	@docker image prune -f
 
 lint-image:
 	@docker run --rm -i hadolint/hadolint < Dockerfile
@@ -74,6 +73,7 @@ push-image:
 
 clean-image:
 	@docker rmi -f ${REPO}:${IMG_TAG} ${REGISTRY}/${REPO}:${IMG_TAG}
+	@docker image prune -f
 
 apply-manifests:
 	@kubectl --context=kind-kind apply -f config/registry.yaml
