@@ -86,7 +86,7 @@ jobs:
         run: |
           ls -la $IMAGE_CACHE_DIR
           for f in $(ls $IMAGE_CACHE_DIR/*.tar); do
-            docker load < $IMAGE_CACHE_DIR/$f
+            docker load < $f
           done
 
       - name: Lint container image
