@@ -140,7 +140,7 @@ jobs:
           kubectl --context=kind-kind logs $name | tee /dev/stderr | grep 'Hello world'
 
       - name: Save container images if needed
-        if: ${{ steps.image-cache.outputs.cache-hit != "true" }}
+        if: ${{ steps.image-cache.outputs.cache-hit != 'true' }}
         run: |
           docker save gcr.io/distroless/static-debian11 > $IMAGE_CACHE_DIR/distroless-static-debian11.tar
           docker save hadolint/hadolint > $IMAGE_CACHE_DIR/hadolint.tar
