@@ -75,7 +75,6 @@ clean-image:
 	@docker rmi -f ${REPO}:${IMG_TAG} ${REGISTRY}/${REPO}:${IMG_TAG}
 	@docker image prune -f
 
-
 apply-manifests:
 	@kubectl --context=kind-kind apply -f config/registry.yaml
 	@kubectl --context=kind-kind apply -f config/crd.yaml
