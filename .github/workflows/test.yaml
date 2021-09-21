@@ -41,7 +41,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ steps.go-cache-paths.outputs.go-mod-cache }}
-          key: ${{ runner.os }}-go-mod-cache-${{ hashFiles('go.sum') }}
+          key: ${{ runner.os }}-go-mod-cache-${{ hashFiles('go.sum', '**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-mod-cache-
 
@@ -78,7 +78,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ env.IMAGE_CACHE_DIR }}
-          key: ${{ runner.os }}-image-cache-${{ hashFiles('Dockerfile', 'go.sum', '*.go', '**/*.go') }}
+          key: ${{ runner.os }}-image-cache-${{ hashFiles('Dockerfile', 'go.sum', '**/go.sum', '*.go', '**/*.go') }}
           restore-keys: |
             ${{ runner.os }}-image-cache-
 
@@ -109,7 +109,6 @@ jobs:
           for id in $danglings; do
             docker save $id > $IMAGE_CACHE_DIR/dangling_$id.tar
           done
-          touch $IMAGE_CACHE_DIR/empty.txt
         env:
           TRUE_STR: "true"
 
