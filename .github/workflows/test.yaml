@@ -80,16 +80,7 @@ jobs:
         run: make apply-manifests
 
       - name: Waiting for registry to be ready
-        run: |
-          while :
-          do
-            status=$(kubectl --context=kind-kind get pods -o json | jq -r '.items[] | select(.metadata.name | contains("registry")) | .status.phase')
-            if [[ $status = 'Running' ]]; then
-              break
-            fi
-            echo 'Waiting for registry to be ready...'
-            sleep 3
-          done
+        run: make wait-registry-running
 
       - name: Start port forwarding for container registry
         run: make port-forward &
@@ -98,16 +89,7 @@ jobs:
         run: make push-image
 
       - name: Waiting for controller to be ready
-        run: |
-          while :
-          do
-            status=$(kubectl --context=kind-kind get pods -o json | jq -r '.items[] | select(.metadata.name | contains("controller")) | .status.phase')
-            if [[ $status = 'Running' ]]; then
-              break
-            fi
-            echo 'Waiting for controller to be ready...'
-            sleep 3
-          done
+        run: make wait-controller-running
 
       - name: Get pod logs
         run: |

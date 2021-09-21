@@ -81,6 +81,12 @@ apply-manifests:
 	@kubectl --context=kind-kind apply -f config/example-foobar.yaml
 	@kubectl --context=kind-kind apply -f config/controller.yaml
 
-mod-replace-kube: KUBE_LIB_VER := 1.22.1
-mod-replace-kube:
-	@./go_mod_replace.sh ${KUBE_LIB_VER}
+replace-k8s-go-module: KUBE_LIB_VER := 1.22.1
+replace-k8s-go-module:
+	@./scripts/replace_k8s_go_module.sh ${KUBE_LIB_VER}
+
+wait-registry-running:
+	@./scripts/wait_pod_running.sh registry
+
+wait-controller-running:
+	@./scripts/wait_pod_running.sh controller
