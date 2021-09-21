@@ -23,7 +23,7 @@ jobs:
         with:
           go-version: "1.17"
 
-      - name: Check out paths
+      - name: Check out Go cache paths
         id: go-cache-paths
         run: |
           echo "::set-output name=go-cache::$(go env GOCACHE)"
@@ -33,7 +33,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ steps.go-cache-paths.outputs.go-cache }}
-          key: ${{ runner.os }}-go-cache-${{ hashFiles('go.sum') }}
+          key: ${{ runner.os }}-go-cache-${{ hashFiles('*.go', '**/*.go') }}
           restore-keys: |
             ${{ runner.os }}-go-cache-
 
@@ -41,7 +41,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ steps.go-cache-paths.outputs.go-mod-cache }}
-          key: ${{ runner.os }}-go-mod-cache-${{ hashFiles('go.sum') }}
+          key: ${{ runner.os }}-go-mod-cache-${{ hashFiles('go.sum', '**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-mod-cache-
 
@@ -65,12 +65,34 @@ jobs:
     name: Image
     timeout-minutes: 15
     runs-on: "ubuntu-latest"
+    env:
+      IMAGE_CACHE_DIR: /tmp/image_cache
     steps:
       - name: Check out code
         uses: actions/checkout@v2
 
+      - name: Create cache directory
+        run: mkdir -p $IMAGE_CACHE_DIR
+
+      - name: Cache container images
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.IMAGE_CACHE_DIR }}
+          key: ${{ runner.os }}-image-cache-${{ hashFiles('Dockerfile', 'go.sum', '**/go.sum', '*.go', '**/*.go') }}
+          restore-keys: |
+            ${{ runner.os }}-image-cache-
+
+      - name: Load container image cache
+        run: |
+          ls -la $IMAGE_CACHE_DIR
+          for f in $(ls $IMAGE_CACHE_DIR/*.tar); do
+            docker load < $f
+          done
+
       - name: Lint container image
-        run: make lint-image
+        run: |
+          make lint-image
+          docker save hadolint/hadolint > $IMAGE_CACHE_DIR/hadolint.tar
 
       - name: Create cluster with Kind
         run: kind create cluster
@@ -79,7 +101,16 @@ jobs:
         run: make apply-manifests
 
       - name: Build container image
-        run: make build-image
+        run: |
+          make build-image
+          docker save golang > $IMAGE_CACHE_DIR/golang.tar
+          docker save kubernetes-controller-template > $IMAGE_CACHE_DIR/kubernetes-controller-template.tar
+          danglings=$(docker images -q -f dangling=$TRUE_STR)
+          for id in $danglings; do
+            docker save $id > $IMAGE_CACHE_DIR/dangling_$id.tar
+          done
+        env:
+          TRUE_STR: "true"
 
       - name: Start port forwarding for container registry
         run: make port-forward &
