@@ -72,16 +72,14 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Create cache directory
-        run: |
-          mkdir -p $IMAGE_CACHE_DIR
-          echo '1' > $GITHUB_WORKSPACE/buster.txt
+        run: mkdir -p $IMAGE_CACHE_DIR
 
       - name: Cache container images
         id: image-cache
         uses: actions/cache@v2
         with:
           path: ${{ env.IMAGE_CACHE_DIR }}
-          key: ${{ runner.os }}-image-cache-${{ hashFiles('Dockerfile', 'go.sum', '**/go.sum', '*.go', '**/*.go', 'buster.txt') }}
+          key: ${{ runner.os }}-image-cache-1-${{ hashFiles('Dockerfile', 'go.sum', '**/go.sum', '*.go', '**/*.go') }}
           restore-keys: |
             ${{ runner.os }}-image-cache-
 
