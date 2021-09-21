@@ -85,7 +85,7 @@ jobs:
       - name: Load container image cache
         run: |
           ls -la $IMAGE_CACHE_DIR
-          for f in $(ls $IMAGE_CACHE_DIR); do
+          for f in $(ls $IMAGE_CACHE_DIR/*.tar); do
             docker load < $IMAGE_CACHE_DIR/$f
           done
 
@@ -109,6 +109,7 @@ jobs:
           for id in $danglings; do
             docker save $id > $IMAGE_CACHE_DIR/dangling_$id.tar
           done
+          touch $IMAGE_CACHE_DIR/empty.txt
         env:
           TRUE_STR: "true"
 
