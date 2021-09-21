@@ -33,7 +33,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ steps.go-cache-paths.outputs.go-cache }}
-          key: ${{ runner.os }}-go-cache-${{ hashFiles('go.sum') }}
+          key: ${{ runner.os }}-go-cache-${{ hashFiles('*.go', '**/*.go') }}
           restore-keys: |
             ${{ runner.os }}-go-cache-
 
