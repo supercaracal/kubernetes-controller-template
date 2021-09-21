@@ -34,16 +34,12 @@ jobs:
         with:
           path: ${{ steps.go-cache-paths.outputs.go-cache }}
           key: ${{ runner.os }}-go-cache-${{ hashFiles('*.go', '**/*.go') }}
-          restore-keys: |
-            ${{ runner.os }}-go-cache-
 
       - name: Cache GOMODCACHE
         uses: actions/cache@v2
         with:
           path: ${{ steps.go-cache-paths.outputs.go-mod-cache }}
           key: ${{ runner.os }}-go-mod-cache-${{ hashFiles('go.sum', '**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-mod-cache-
 
       - name: Get dependencies
         run: |
@@ -63,32 +59,13 @@ jobs:
         run: make test
   image:
     name: Image
-    timeout-minutes: 30
+    timeout-minutes: 15
     runs-on: "ubuntu-latest"
     env:
       IMAGE_CACHE_DIR: /tmp/image_cache
     steps:
       - name: Check out code
         uses: actions/checkout@v2
-
-      - name: Create cache directory
-        run: mkdir -p $IMAGE_CACHE_DIR
-
-      - name: Cache container images
-        id: image-cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ env.IMAGE_CACHE_DIR }}
-          key: ${{ runner.os }}-image-cache-1-${{ hashFiles('Dockerfile', 'go.sum', '**/go.sum', '*.go', '**/*.go') }}
-          restore-keys: |
-            ${{ runner.os }}-image-cache-
-
-      - name: Load container image cache
-        run: |
-          ls -la $IMAGE_CACHE_DIR
-          for f in $(ls $IMAGE_CACHE_DIR/*.tar); do
-            docker load < $f
-          done
 
       - name: Lint container image
         run: make lint-image
@@ -136,18 +113,3 @@ jobs:
         run: |
           name=$(kubectl --context=kind-kind get pods -o json | jq -r '.items[] | .metadata.name' | grep controller)
           kubectl --context=kind-kind logs $name | tee /dev/stderr | grep 'Hello world'
-
-      - name: Save container images if needed
-        if: ${{ steps.image-cache.outputs.cache-hit != 'true' }}
-        run: |
-          docker save gcr.io/distroless/static-debian11 > $IMAGE_CACHE_DIR/distroless-static-debian11.tar
-          docker save hadolint/hadolint > $IMAGE_CACHE_DIR/hadolint.tar
-          docker save kubernetes-controller-template > $IMAGE_CACHE_DIR/kubernetes-controller-template.tar
-          docker save golang > $IMAGE_CACHE_DIR/golang.tar
-          docker save kindest/node > $IMAGE_CACHE_DIR/kind-node.tar
-          danglings=$(docker images -q -f dangling=$TRUE_STR)
-          for id in $danglings; do
-            docker save $id > $IMAGE_CACHE_DIR/dangling-$id.tar
-          done
-        env:
-          TRUE_STR: "true"
