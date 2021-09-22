@@ -6,7 +6,7 @@ Kubernetes Controller Template
 
 This controller has a feature to log a message declared by manifest.
 
-# Running on local host
+## Running on local host
 ```
 $ kind create cluster
 $ make apply-manifests
@@ -22,7 +22,7 @@ I0922 13:33:23.024202  248918 custom.go:74] Started workers
 I0922 13:33:23.024293  248918 reconciler.go:90] Hello world
 ```
 
-# Running in Docker
+## Running in Docker
 ```
 $ kind create cluster
 $ make apply-manifests
@@ -46,7 +46,7 @@ I0921 22:42:23.182732       1 custom.go:74] Started workers
 I0921 22:42:23.182991       1 reconciler.go:90] Hello world
 ```
 
-# See also
+## See also
 * [sample-controller](https://github.com/kubernetes/sample-controller)
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder)
 * [operator-sdk](https://github.com/operator-framework/operator-sdk)
