@@ -18,17 +18,17 @@ import (
 
 // Reconciler is
 type Reconciler struct {
-	customClientSet      clientset.Interface
-	customResourceLister listers.FooBarLister
-	workQueue            workqueue.RateLimitingInterface
+	customClientSet clientset.Interface
+	customLister    listers.FooBarLister
+	workQueue       workqueue.RateLimitingInterface
 }
 
 // NewReconciler is
-func NewReconciler(customClientSet clientset.Interface, customResourceLister listers.FooBarLister, workQueue workqueue.RateLimitingInterface) *Reconciler {
+func NewReconciler(cli clientset.Interface, lst listers.FooBarLister, wq workqueue.RateLimitingInterface) *Reconciler {
 	return &Reconciler{
-		customClientSet:      customClientSet,
-		customResourceLister: customResourceLister,
-		workQueue:            workQueue,
+		customClientSet: cli,
+		customLister:    lst,
+		workQueue:       wq,
 	}
 }
 
@@ -78,7 +78,7 @@ func (r *Reconciler) do(key string) error {
 		return fmt.Errorf("invalid resource key: %s: %w", key, err)
 	}
 
-	resource, err := r.customResourceLister.FooBars(namespace).Get(name)
+	resource, err := r.customLister.FooBars(namespace).Get(name)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return fmt.Errorf("custom resource '%s' in work queue no longer exists: %w", key, err)
