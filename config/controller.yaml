@@ -38,8 +38,10 @@ metadata:
 rules:
   - apiGroups:
       - supercaracal.example.com
+      - ""
     resources:
       - foobars
+      - pods
     verbs:
       - "get"
       - "list"
