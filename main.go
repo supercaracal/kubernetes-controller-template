@@ -24,16 +24,16 @@ func main() {
 
 	cfg, err := buildConfig(masterURL, kubeconfig)
 	if err != nil {
-		klog.Fatal("Error building kubernetes config:", err)
+		klog.Fatal("Error building kubernetes config: ", err)
 	}
 
 	ctrl, err := controllers.NewCustomController(cfg)
 	if err != nil {
-		klog.Fatal("Error building custom controller:", err)
+		klog.Fatal("Error building custom controller: ", err)
 	}
 
 	if err := ctrl.Run(setUpSignalHandler()); err != nil {
-		klog.Fatal("Error running controller:", err)
+		klog.Fatal("Error running controller: ", err)
 	}
 }
 
