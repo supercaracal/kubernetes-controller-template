@@ -1,10 +1,12 @@
-SHELL    := /bin/bash -e -u -o pipefail
-TZ       := Asia/Tokyo
-ORG      := supercaracal
-REPO     := kubernetes-controller-template
-IMG_TAG  := latest
-REGISTRY := 127.0.0.1:5000
-TEMP_DIR := _tmp
+MAKEFLAGS += --warn-undefined-variables
+SHELL     := /bin/bash -e -u -o pipefail
+SVC       := github.com
+ORG       := supercaracal
+REPO      := kubernetes-controller-template
+MOD_PATH  := ${SVC}/${ORG}/${REPO}
+IMG_TAG   := latest
+REGISTRY  := 127.0.0.1:5000
+TEMP_DIR  := _tmp
 
 all: build test lint
 
@@ -16,9 +18,8 @@ ${TEMP_DIR}/codegen: GOBIN                 ?= $(shell go env GOPATH)/bin
 ${TEMP_DIR}/codegen: GOENV                 += GOROOT=${CURRENT_DIR}/${TEMP_DIR}
 ${TEMP_DIR}/codegen: LOG_LEVEL             ?= 1
 ${TEMP_DIR}/codegen: API_VERSION           := v1
-${TEMP_DIR}/codegen: CODE_GEN_DIR          := github.com/${ORG}/${REPO}
-${TEMP_DIR}/codegen: CODE_GEN_INPUT        := ${CODE_GEN_DIR}/pkg/apis/${ORG}/${API_VERSION}
-${TEMP_DIR}/codegen: CODE_GEN_OUTPUT       := ${CODE_GEN_DIR}/pkg/generated
+${TEMP_DIR}/codegen: CODE_GEN_INPUT        := ${MOD_PATH}/pkg/apis/${ORG}/${API_VERSION}
+${TEMP_DIR}/codegen: CODE_GEN_OUTPUT       := ${MOD_PATH}/pkg/generated
 ${TEMP_DIR}/codegen: CODE_GEN_ARGS         += --output-base=${CURRENT_DIR}/${TEMP_DIR}/src
 ${TEMP_DIR}/codegen: CODE_GEN_ARGS         += --go-header-file=${CURRENT_DIR}/${TEMP_DIR}/empty.txt
 ${TEMP_DIR}/codegen: CODE_GEN_ARGS         += -v ${LOG_LEVEL}
@@ -26,8 +27,8 @@ ${TEMP_DIR}/codegen: CODE_GEN_DEEPC        := zz_generated.deepcopy
 ${TEMP_DIR}/codegen: CODE_GEN_CLI_SET_NAME := versioned
 ${TEMP_DIR}/codegen: ${TEMP_DIR} $(shell find pkg/apis/${ORG}/ -type f -name '*.go')
 	@touch -a ${TEMP_DIR}/empty.txt
-	@mkdir -p ${TEMP_DIR}/src/${CODE_GEN_DIR}
-	@ln -sf ${CURRENT_DIR}/pkg ${TEMP_DIR}/src/${CODE_GEN_DIR}/
+	@mkdir -p ${TEMP_DIR}/src/${MOD_PATH}
+	@ln -sf ${CURRENT_DIR}/pkg ${TEMP_DIR}/src/${MOD_PATH}/
 	@# https://github.com/kubernetes/gengo/blob/master/args/args.go
 	@# https://github.com/kubernetes/code-generator/tree/master/cmd
 	${GOENV} ${GOBIN}/deepcopy-gen ${CODE_GEN_ARGS} --input-dirs=${CODE_GEN_INPUT} --bounding-dirs=${CODE_GEN_INPUT} --output-file-base=${CODE_GEN_DEEPC}
@@ -41,8 +42,11 @@ codegen: ${TEMP_DIR}/codegen
 build: GOOS        ?= $(shell go env GOOS)
 build: GOARCH      ?= $(shell go env GOARCH)
 build: CGO_ENABLED ?= $(shell go env CGO_ENABLED)
+build: FLAGS       += -ldflags="-s -w"
+build: FLAGS       += -trimpath
+build: FLAGS       += -tags timetzdata
 build: codegen
-	GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=${CGO_ENABLED} go build -ldflags="-s -w" -trimpath -tags timetzdata -o ${REPO}
+	GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=${CGO_ENABLED} go build ${FLAGS} -o ${REPO}
 
 test:
 	@go clean -testcache
@@ -52,11 +56,14 @@ lint:
 	@go vet ./...
 	@golint -set_exit_status ./...
 
+run: TZ  ?= Asia/Tokyo
+run: CFG ?= $$HOME/.kube/config
 run:
-	@TZ=${TZ} ./${REPO} --kubeconfig=$$HOME/.kube/config
+	@TZ=${TZ} ./${REPO} --kubeconfig=${CFG}
 
 clean:
-	@rm -f ${REPO} main
+	@unlink ${TEMP_DIR}/src/${MOD_PATH}/pkg || true
+	@rm -rf ${REPO} main ${TEMP_DIR}
 
 build-image:
 	@docker build -t ${REPO}:${IMG_TAG} .
@@ -72,8 +79,9 @@ push-image:
 	@docker push ${REGISTRY}/${REPO}:${IMG_TAG}
 
 clean-image:
-	@docker rmi -f ${REPO}:${IMG_TAG} ${REGISTRY}/${REPO}:${IMG_TAG}
+	@docker rmi -f ${REPO}:${IMG_TAG} ${REGISTRY}/${REPO}:${IMG_TAG} || true
 	@docker image prune -f
+	@docker volume prune -f
 
 apply-manifests:
 	@kubectl --context=kind-kind apply -f config/registry.yaml
