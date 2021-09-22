@@ -6,6 +6,23 @@ Kubernetes Controller Template
 
 This controller has a feature to log a message declared by manifest.
 
+# Running on local host
+```
+$ kind create cluster
+$ make apply-manifests
+$ make build
+$ make run
+I0922 13:33:22.923015  248918 custom.go:49] Setting up event handlers
+I0922 13:33:22.923174  248918 custom.go:65] Starting controller
+I0922 13:33:22.923199  248918 custom.go:66] Waiting for informer caches to sync
+I0922 13:33:22.945836  248918 informer.go:66] Added object example
+I0922 13:33:22.945869  248918 informer.go:71] Enqueue example to work queue
+I0922 13:33:23.024154  248918 custom.go:71] Starting workers
+I0922 13:33:23.024202  248918 custom.go:74] Started workers
+I0922 13:33:23.024293  248918 reconciler.go:90] Hello world
+```
+
+# Running in Docker
 ```
 $ kind create cluster
 $ make apply-manifests

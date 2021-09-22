@@ -1,5 +1,5 @@
 MAKEFLAGS += --warn-undefined-variables
-SHELL     := /bin/bash -e -u -o pipefail
+SHELL     := /bin/bash -euo pipefail
 SVC       := github.com
 ORG       := supercaracal
 REPO      := kubernetes-controller-template
@@ -7,6 +7,7 @@ MOD_PATH  := ${SVC}/${ORG}/${REPO}
 IMG_TAG   := latest
 REGISTRY  := 127.0.0.1:5000
 TEMP_DIR  := _tmp
+GOBIN     ?= $(shell go env GOPATH)/bin
 
 ifdef VERBOSE
 	QUIET :=
@@ -19,9 +20,14 @@ all: build test lint
 ${TEMP_DIR}:
 	${QUIET} mkdir -p $@
 
+${GOBIN}/deepcopy-gen ${GOBIN}/client-gen ${GOBIN}/lister-gen ${GOBIN}/informer-gen:
+	go install k8s.io/code-generator/...@latest
+
+${GOBIN}/golint:
+	go install golang.org/x/lint/golint@latest
+
 # https://github.com/kubernetes/gengo/blob/master/args/args.go
 # https://github.com/kubernetes/code-generator/tree/master/cmd
-${TEMP_DIR}/codegen: GOBIN                 ?= $(shell go env GOPATH)/bin
 ${TEMP_DIR}/codegen: GOENV                 += GOROOT=${CURDIR}/${TEMP_DIR}
 ${TEMP_DIR}/codegen: LOG_LEVEL             ?= 1
 ${TEMP_DIR}/codegen: API_VERSION           := v1
@@ -32,7 +38,7 @@ ${TEMP_DIR}/codegen: CODE_GEN_ARGS         += --go-header-file=${CURDIR}/${TEMP_
 ${TEMP_DIR}/codegen: CODE_GEN_ARGS         += -v ${LOG_LEVEL}
 ${TEMP_DIR}/codegen: CODE_GEN_DEEPC        := zz_generated.deepcopy
 ${TEMP_DIR}/codegen: CODE_GEN_CLI_SET_NAME := versioned
-${TEMP_DIR}/codegen: ${TEMP_DIR} $(shell find pkg/apis/${ORG}/ -type f -name '*.go')
+${TEMP_DIR}/codegen: ${GOBIN}/deepcopy-gen ${GOBIN}/client-gen ${GOBIN}/lister-gen ${GOBIN}/informer-gen ${TEMP_DIR} $(shell find pkg/apis/${ORG}/ -type f -name '*.go')
 	${QUIET} touch -a ${TEMP_DIR}/empty.txt
 	${QUIET} mkdir -p ${TEMP_DIR}/src/${MOD_PATH}
 	${QUIET} ln -sf ${CURDIR}/pkg ${TEMP_DIR}/src/${MOD_PATH}/
@@ -57,7 +63,7 @@ test:
 	${QUIET} go clean -testcache
 	${QUIET} go test -race ./...
 
-lint:
+lint: ${GOBIN}/golint
 	${QUIET} go vet ./...
 	${QUIET} golint -set_exit_status ./...
 
