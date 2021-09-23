@@ -105,7 +105,10 @@ replace-k8s-go-module:
 	${QUIET} ./scripts/replace_k8s_go_module.sh ${KUBE_LIB_VER}
 
 wait-registry-running:
-	${QUIET} ./scripts/wait_pod_running.sh registry
+	${QUIET} ./scripts/wait_pod_status.sh registry Running
 
 wait-controller-running:
-	${QUIET} ./scripts/wait_pod_running.sh controller
+	${QUIET} ./scripts/wait_pod_status.sh controller Running
+
+wait-example-completed:
+	${QUIET} ./scripts/wait_pod_status.sh example Succeeded
