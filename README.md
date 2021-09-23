@@ -46,3 +46,28 @@ $ make push-image
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder)
 * [operator-sdk](https://github.com/operator-framework/operator-sdk)
 * [kind](https://github.com/kubernetes-sigs/kind)
+
+## TODO
+You can edit the following files as needed.
+
+```
+$ grep -riIl --exclude-dir=generated --exclude-dir=.git --exclude=zz_generated.deepcopy.go 'supercaracal\|foobar\|kubernetes-controller-template' .
+./README.md
+./go.mod
+./.github/workflows/release.yaml
+./internal/controller/custom.go
+./internal/worker/reconciler.go
+./Makefile
+./.dockerignore
+./.gitignore
+./config/controller.yaml
+./config/registry.yaml
+./config/crd.yaml
+./config/example-foobar.yaml
+./main.go
+./pkg/apis/supercaracal/register.go
+./pkg/apis/supercaracal/v1/doc.go
+./pkg/apis/supercaracal/v1/register.go
+./pkg/apis/supercaracal/v1/types.go
+./Dockerfile
+```
