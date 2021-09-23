@@ -4,7 +4,25 @@
 Kubernetes Controller Template
 ===============================================================================
 
-This controller has a feature to log a message declared by manifest.
+This controller has a feature to create a pod to log a message declared by manifest.
+
+```
+$ kubectl --context=kind-kind get pods
+NAME                          READY   STATUS      RESTARTS   AGE
+controller-78bf6449cc-ptwnn   1/1     Running     0          17s
+example-1632371659            0/1     Completed   0          14s
+registry-0                    1/1     Running     0          15h
+
+$ kubectl --context=kind-kind logs controller-78bf6449cc-ptwnn
+I0923 13:34:18.976502       1 informer.go:66] Added object default/example
+I0923 13:34:18.976700       1 informer.go:71] Enqueue object default/example to work queue
+I0923 13:34:19.377067       1 custom.go:121] Controller is ready
+I0923 13:34:19.377173       1 reconciler.go:106] Dequeued object default/example successfully from work queue
+I0923 13:34:19.485510       1 reconciler.go:112] Created resource default/example-1632371659 successfully
+
+$ kubectl --context=kind-kind logs example-1632371659
+Hello world
+```
 
 ## Running on local host
 ```
@@ -12,11 +30,6 @@ $ kind create cluster
 $ make apply-manifests
 $ make build
 $ make run
-I0923 11:07:43.962836  779428 informer.go:66] Added object default/example
-I0923 11:07:43.964894  779428 informer.go:71] Enqueue object default/example to work queue
-I0923 11:07:44.040324  779428 custom.go:121] Controller is ready
-I0923 11:07:44.040418  779428 reconciler.go:100] Dequeued object default/example successfully from work queue
-I0923 11:07:44.040773  779428 reconciler.go:101] Hello world
 ```
 
 ## Running in Docker
@@ -26,18 +39,6 @@ $ make apply-manifests
 $ make build-image
 $ make port-forward &
 $ make push-image
-
-$ kubectl --context=kind-kind get pods
-NAME                          READY   STATUS    RESTARTS   AGE
-controller-78bf6449cc-m8zqf   1/1     Running   0          4m12s
-registry-0                    1/1     Running   0          4m12s
-
-$ kubectl --context=kind-kind logs controller-78bf6449cc-m8zqf
-I0923 11:24:12.777814       1 informer.go:66] Added object default/example
-I0923 11:24:12.778102       1 informer.go:71] Enqueue object default/example to work queue
-I0923 11:24:13.180382       1 custom.go:121] Controller is ready
-I0923 11:24:13.180705       1 reconciler.go:100] Dequeued object default/example successfully from work queue
-I0923 11:24:13.180791       1 reconciler.go:101] Hello world
 ```
 
 ## See also

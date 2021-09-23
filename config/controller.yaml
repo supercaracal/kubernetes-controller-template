@@ -12,10 +12,16 @@ metadata:
 rules:
   - apiGroups:
       - supercaracal.example.com
+      - ""
     resources:
       - foobars
+      - pods
     verbs:
-      - "*"
+      - "get"
+      - "list"
+      - "watch"
+      - "create"
+      - "update"
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1

@@ -3,7 +3,9 @@ package worker
 import (
 	"context"
 	"fmt"
+	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -36,6 +38,10 @@ type ResourceLister struct {
 	Pod            corelisterv1.PodLister
 	CustomResource customlisterv1.FooBarLister
 }
+
+const (
+	resourceName = "FooBar"
+)
 
 // NewReconciler is
 func NewReconciler(cli *ResourceClient, list *ResourceLister, wq workqueue.RateLimitingInterface) *Reconciler {
@@ -98,7 +104,12 @@ func (r *Reconciler) do(key string) error {
 	}
 
 	klog.Infof("Dequeued object %s successfully from work queue", key)
-	klog.Info(resource.Spec.Message)
+	child, err := r.createChildPod(resource)
+	if err != nil {
+		return err
+	}
+
+	klog.Infof("Created resource %s/%s successfully", child.Namespace, child.Name)
 	return r.updateCustomResourceStatus(resource)
 }
 
@@ -107,4 +118,31 @@ func (r *Reconciler) updateCustomResourceStatus(resource *customapiv1.FooBar) (e
 	cpy.Status.Succeeded = true
 	_, err = r.client.Custom.SupercaracalV1().FooBars(resource.Namespace).Update(context.TODO(), cpy, metav1.UpdateOptions{})
 	return
+}
+
+func (r *Reconciler) createChildPod(parent *customapiv1.FooBar) (*corev1.Pod, error) {
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fmt.Sprintf("%s-%d", parent.Name, time.Now().Unix()),
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(parent, customapiv1.SchemeGroupVersion.WithKind(resourceName)),
+			},
+		},
+		Spec: corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
+			Containers: []corev1.Container{
+				corev1.Container{
+					Name:    "main",
+					Image:   "gcr.io/distroless/static-debian11:debug-amd64",
+					Command: []string{"echo"},
+					Args:    []string{parent.Spec.Message},
+					SecurityContext: &corev1.SecurityContext{
+						ReadOnlyRootFilesystem: func(b bool) *bool { return &b }(true),
+					},
+				},
+			},
+		},
+	}
+
+	return r.client.Kube.CoreV1().Pods(parent.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
 }
