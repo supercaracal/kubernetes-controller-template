@@ -5,6 +5,7 @@ Kubernetes Controller Template
 ===============================================================================
 
 This controller has a feature to create a pod to log a message declared by manifest.
+The pod will be deleted automatically by the controller later.
 
 ```
 $ kubectl --context=kind-kind get pods
@@ -46,6 +47,7 @@ $ make push-image
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder)
 * [operator-sdk](https://github.com/operator-framework/operator-sdk)
 * [kind](https://github.com/kubernetes-sigs/kind)
+* [Kubernetes Reference](https://kubernetes.io/docs/reference/)
 
 ## TODO
 You can edit the following files as needed.

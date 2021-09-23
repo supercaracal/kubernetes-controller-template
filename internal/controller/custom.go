@@ -26,15 +26,15 @@ import (
 const (
 	informerReSyncDuration = 5 * time.Second
 	reconcileDuration      = 5 * time.Second
+	cleanupDuration        = 1 * time.Minute
 	resourceName           = "FooBars"
 )
 
 // CustomController is
 type CustomController struct {
-	kube              *kubeTool
-	custom            *customTool
-	workQueue         workqueue.RateLimitingInterface
-	reconcileDuration time.Duration
+	kube      *kubeTool
+	custom    *customTool
+	workQueue workqueue.RateLimitingInterface
 }
 
 type kubeTool struct {
@@ -83,14 +83,7 @@ func NewCustomController(cfg *rest.Config) (*CustomController, error) {
 		DeleteFunc: h.OnDelete,
 	})
 
-	controller := CustomController{
-		kube:              kube,
-		custom:            custom,
-		workQueue:         wq,
-		reconcileDuration: reconcileDuration,
-	}
-
-	return &controller, nil
+	return &CustomController{kube: kube, custom: custom, workQueue: wq}, nil
 }
 
 // Run is
@@ -116,7 +109,8 @@ func (c *CustomController) Run(stopCh <-chan struct{}) error {
 		},
 		c.workQueue,
 	)
-	go wait.Until(worker.Run, c.reconcileDuration, stopCh)
+	go wait.Until(worker.Run, reconcileDuration, stopCh)
+	go wait.Until(worker.Clean, cleanupDuration, stopCh)
 
 	klog.Info("Controller is ready")
 	<-stopCh
