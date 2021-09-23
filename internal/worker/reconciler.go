@@ -7,6 +7,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
@@ -40,7 +41,8 @@ type ResourceLister struct {
 }
 
 const (
-	resourceName = "FooBar"
+	resourceName  = "FooBar"
+	childLifetime = 5 * time.Minute
 )
 
 // NewReconciler is
@@ -60,7 +62,7 @@ func (r *Reconciler) processNextWorkItem() bool {
 		return false
 	}
 
-	if err := r.exec(obj); err != nil {
+	if err := r.sync(obj); err != nil {
 		utilruntime.HandleError(err)
 		return true
 	}
@@ -68,7 +70,7 @@ func (r *Reconciler) processNextWorkItem() bool {
 	return true
 }
 
-func (r *Reconciler) exec(obj interface{}) error {
+func (r *Reconciler) sync(obj interface{}) error {
 	defer r.workQueue.Done(obj)
 
 	var key string
@@ -79,7 +81,7 @@ func (r *Reconciler) exec(obj interface{}) error {
 		return fmt.Errorf("expected string in workqueue but got %#v", obj)
 	}
 
-	if err := r.do(key); err != nil {
+	if err := r.create(key); err != nil {
 		r.workQueue.AddRateLimited(key)
 		return fmt.Errorf("error syncing '%s': %w, requeuing", key, err)
 	}
@@ -88,13 +90,13 @@ func (r *Reconciler) exec(obj interface{}) error {
 	return nil
 }
 
-func (r *Reconciler) do(key string) error {
+func (r *Reconciler) create(key string) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		return fmt.Errorf("invalid resource key: %s: %w", key, err)
 	}
 
-	resource, err := r.lister.CustomResource.FooBars(namespace).Get(name)
+	parent, err := r.lister.CustomResource.FooBars(namespace).Get(name)
 	if err != nil {
 		if kubeerrors.IsNotFound(err) {
 			return fmt.Errorf("custom resource '%s' in work queue no longer exists: %w", key, err)
@@ -104,26 +106,27 @@ func (r *Reconciler) do(key string) error {
 	}
 
 	klog.Infof("Dequeued object %s successfully from work queue", key)
-	child, err := r.createChildPod(resource)
+	child, err := r.createChildPod(parent)
 	if err != nil {
 		return err
 	}
-
 	klog.Infof("Created resource %s/%s successfully", child.Namespace, child.Name)
-	return r.updateCustomResourceStatus(resource)
+
+	return r.update(parent)
 }
 
-func (r *Reconciler) updateCustomResourceStatus(resource *customapiv1.FooBar) (err error) {
-	cpy := resource.DeepCopy()
+func (r *Reconciler) update(obj *customapiv1.FooBar) (err error) {
+	cpy := obj.DeepCopy()
 	cpy.Status.Succeeded = true
-	_, err = r.client.Custom.SupercaracalV1().FooBars(resource.Namespace).Update(context.TODO(), cpy, metav1.UpdateOptions{})
+	_, err = r.client.Custom.SupercaracalV1().FooBars(obj.Namespace).Update(context.TODO(), cpy, metav1.UpdateOptions{})
 	return
 }
 
 func (r *Reconciler) createChildPod(parent *customapiv1.FooBar) (*corev1.Pod, error) {
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("%s-%d", parent.Name, time.Now().Unix()),
+			Name:      fmt.Sprintf("%s-%d", parent.Name, time.Now().Unix()),
+			Namespace: parent.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(parent, customapiv1.SchemeGroupVersion.WithKind(resourceName)),
 			},
@@ -145,4 +148,51 @@ func (r *Reconciler) createChildPod(parent *customapiv1.FooBar) (*corev1.Pod, er
 	}
 
 	return r.client.Kube.CoreV1().Pods(parent.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+}
+
+// Clean is
+func (r *Reconciler) Clean() {
+	parents, err := r.lister.CustomResource.List(labels.Everything())
+	if err != nil {
+		if !kubeerrors.IsNotFound(err) {
+			utilruntime.HandleError(err)
+		}
+		return
+	}
+
+	background := metav1.DeletePropagationBackground
+	baseTime := metav1.NewTime(time.Now().Add(-childLifetime))
+
+	for _, parent := range parents {
+		children, err := r.lister.Pod.Pods(parent.Namespace).List(labels.Everything())
+		if err != nil {
+			if !kubeerrors.IsNotFound(err) {
+				utilruntime.HandleError(err)
+			}
+			continue
+		}
+
+		for _, child := range children {
+			if !metav1.IsControlledBy(child, parent) {
+				continue
+			}
+
+			if child.Status.Phase != corev1.PodSucceeded {
+				continue
+			}
+
+			if baseTime.Before(child.Status.StartTime) || baseTime.Equal(child.Status.StartTime) {
+				continue
+			}
+
+			if err := r.client.Kube.CoreV1().Pods(parent.Namespace).Delete(
+				context.TODO(), child.Name, metav1.DeleteOptions{PropagationPolicy: &background},
+			); err != nil {
+				utilruntime.HandleError(err)
+				continue
+			}
+
+			klog.Infof("Deleted resource %s/%s successfully", child.Namespace, child.Name)
+		}
+	}
 }
