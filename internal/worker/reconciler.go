@@ -97,6 +97,7 @@ func (r *Reconciler) do(key string) error {
 		return err
 	}
 
+	klog.Infof("Dequeued object %s successfully from work queue", key)
 	klog.Info(resource.Spec.Message)
 	return r.updateCustomResourceStatus(resource)
 }

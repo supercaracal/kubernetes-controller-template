@@ -60,15 +60,15 @@ func (h *InformerHandler) handleObject(obj interface{}, event string) error {
 			return fmt.Errorf("error decoding object tombstone, invalid type")
 		}
 
-		klog.Infof("Recovered deleted object '%s' from tombstone", object.GetName())
+		klog.Infof("Recovered deleted object %s/%s from tombstone", object.GetNamespace(), object.GetName())
 	}
 
-	klog.Infof("%s object %s", event, object.GetName())
+	klog.Infof("%s object %s/%s", event, object.GetNamespace(), object.GetName())
 	if event == "Deleted" {
 		return nil
 	}
 
-	klog.Infof("Enqueue %s to work queue", object.GetName())
+	klog.Infof("Enqueue object %s/%s to work queue", object.GetNamespace(), object.GetName())
 	return h.enqueueCustomResource(object)
 }
 
