@@ -29,7 +29,7 @@ func (h *InformerHandler) OnAdd(obj interface{}) {
 // OnUpdate is
 func (h *InformerHandler) OnUpdate(before, after interface{}) {
 	if diff := cmp.Diff(before, after); diff != "" {
-		klog.Infof("\n%s", diff)
+		klog.V(4).Infof("\n%s", diff)
 		h.tryToHandleObject(after, "Updated")
 	}
 }
@@ -60,15 +60,15 @@ func (h *InformerHandler) handleObject(obj interface{}, event string) error {
 			return fmt.Errorf("error decoding object tombstone, invalid type")
 		}
 
-		klog.Infof("Recovered deleted object %s/%s from tombstone", object.GetNamespace(), object.GetName())
+		klog.V(4).Infof("Recovered deleted object %s/%s from tombstone", object.GetNamespace(), object.GetName())
 	}
 
-	klog.Infof("%s object %s/%s", event, object.GetNamespace(), object.GetName())
+	klog.V(4).Infof("%s object %s/%s", event, object.GetNamespace(), object.GetName())
 	if event == "Deleted" {
 		return nil
 	}
 
-	klog.Infof("Enqueue object %s/%s to work queue", object.GetNamespace(), object.GetName())
+	klog.V(4).Infof("Enqueue object %s/%s to work queue", object.GetNamespace(), object.GetName())
 	return h.enqueueCustomResource(object)
 }
 

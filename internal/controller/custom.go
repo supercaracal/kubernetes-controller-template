@@ -4,14 +4,17 @@ import (
 	"fmt"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	kubescheme "k8s.io/client-go/kubernetes/scheme"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
 
@@ -92,6 +95,11 @@ func (c *CustomController) Run(stopCh <-chan struct{}) error {
 	defer utilruntime.HandleCrash()
 	defer c.workQueue.ShutDown()
 
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartStructuredLogging(0)
+	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: c.builtin.client.CoreV1().Events("")})
+	recorder := eventBroadcaster.NewRecorder(kubescheme.Scheme, corev1.EventSource{Component: "controller"})
+
 	c.builtin.factory.Start(stopCh)
 	c.custom.factory.Start(stopCh)
 
@@ -109,13 +117,14 @@ func (c *CustomController) Run(stopCh <-chan struct{}) error {
 			CustomResource: c.custom.resource.lister,
 		},
 		c.workQueue,
+		recorder,
 	)
 	go wait.Until(worker.Run, reconcileDuration, stopCh)
 	go wait.Until(worker.Clean, cleanupDuration, stopCh)
 
-	klog.Info("Controller is ready")
+	klog.V(4).Info("Controller is ready")
 	<-stopCh
-	klog.Info("Shutting down controller")
+	klog.V(4).Info("Shutting down controller")
 
 	return nil
 }

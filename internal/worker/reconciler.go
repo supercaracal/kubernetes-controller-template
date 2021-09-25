@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
 
@@ -26,6 +27,7 @@ type Reconciler struct {
 	client    *ResourceClient
 	lister    *ResourceLister
 	workQueue workqueue.RateLimitingInterface
+	recorder  record.EventRecorder
 }
 
 // ResourceClient is
@@ -52,8 +54,14 @@ var (
 )
 
 // NewReconciler is
-func NewReconciler(cli *ResourceClient, list *ResourceLister, wq workqueue.RateLimitingInterface) *Reconciler {
-	return &Reconciler{client: cli, lister: list, workQueue: wq}
+func NewReconciler(
+	cli *ResourceClient,
+	list *ResourceLister,
+	wq workqueue.RateLimitingInterface,
+	rec record.EventRecorder,
+) *Reconciler {
+
+	return &Reconciler{client: cli, lister: list, workQueue: wq, recorder: rec}
 }
 
 // Run is
@@ -111,12 +119,13 @@ func (r *Reconciler) create(key string) error {
 		return err
 	}
 
-	klog.Infof("Dequeued object %s successfully from work queue", key)
+	klog.V(4).Infof("Dequeued object %s successfully from work queue", key)
 	child, err := r.createChildPod(parent)
 	if err != nil {
 		return err
 	}
-	klog.Infof("Created resource %s/%s successfully", child.Namespace, child.Name)
+	r.recorder.Eventf(parent, corev1.EventTypeNormal, "SuccessfulCreate", "Created resource %s/%s", child.Namespace, child.Name)
+	klog.V(4).Infof("Created resource %s/%s successfully", child.Namespace, child.Name)
 
 	return r.update(parent)
 }
@@ -193,7 +202,8 @@ func (r *Reconciler) Clean() {
 				continue
 			}
 
-			klog.Infof("Deleted resource %s/%s successfully", child.Namespace, child.Name)
+			r.recorder.Eventf(parent, corev1.EventTypeNormal, "SuccessfulDelete", "Deleted resource %s/%s", child.Namespace, child.Name)
+			klog.V(4).Infof("Deleted resource %s/%s successfully", child.Namespace, child.Name)
 		}
 	}
 }
