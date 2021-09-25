@@ -41,14 +41,14 @@ type ResourceLister struct {
 }
 
 const (
-	resourceName  = "FooBar"
 	childLifetime = 5 * time.Minute
 )
 
 var (
-	delOpts = metav1.DeleteOptions{PropagationPolicy: func(s metav1.DeletionPropagation) *metav1.DeletionPropagation { return &s }(metav1.DeletePropagationBackground)}
-	updOpts = metav1.UpdateOptions{}
-	creOpts = metav1.CreateOptions{}
+	customGroup = customapiv1.SchemeGroupVersion.WithKind("FooBar")
+	delOpts     = metav1.DeleteOptions{PropagationPolicy: func(s metav1.DeletionPropagation) *metav1.DeletionPropagation { return &s }(metav1.DeletePropagationBackground)}
+	updOpts     = metav1.UpdateOptions{}
+	creOpts     = metav1.CreateOptions{}
 )
 
 // NewReconciler is
@@ -131,11 +131,9 @@ func (r *Reconciler) update(obj *customapiv1.FooBar) (err error) {
 func (r *Reconciler) createChildPod(parent *customapiv1.FooBar) (*corev1.Pod, error) {
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%d", parent.Name, time.Now().Unix()),
-			Namespace: parent.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(parent, customapiv1.SchemeGroupVersion.WithKind(resourceName)),
-			},
+			Name:            fmt.Sprintf("%s-%d", parent.Name, time.Now().Unix()),
+			Namespace:       parent.Namespace,
+			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(parent, customGroup)},
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
