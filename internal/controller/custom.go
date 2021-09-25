@@ -76,12 +76,6 @@ func NewCustomController(cfg *rest.Config) (*CustomController, error) {
 	}
 
 	wq := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), resourceName)
-	h := handlers.NewInformerHandler(wq)
-	custom.resource.informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    h.OnAdd,
-		UpdateFunc: h.OnUpdate,
-		DeleteFunc: h.OnDelete,
-	})
 
 	return &CustomController{builtin: builtin, custom: custom, workQueue: wq}, nil
 }
@@ -90,6 +84,13 @@ func NewCustomController(cfg *rest.Config) (*CustomController, error) {
 func (c *CustomController) Run(stopCh <-chan struct{}) error {
 	defer utilruntime.HandleCrash()
 	defer c.workQueue.ShutDown()
+
+	h := handlers.NewInformerHandler(c.workQueue)
+	c.custom.resource.informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    h.OnAdd,
+		UpdateFunc: h.OnUpdate,
+		DeleteFunc: h.OnDelete,
+	})
 
 	c.builtin.factory.Start(stopCh)
 	c.custom.factory.Start(stopCh)
