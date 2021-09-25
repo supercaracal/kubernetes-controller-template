@@ -103,6 +103,8 @@ func (c *CustomController) Run(stopCh <-chan struct{}) error {
 	}
 
 	eventBroadcaster := record.NewBroadcaster()
+	defer eventBroadcaster.Shutdown()
+
 	eventBroadcaster.StartStructuredLogging(0)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: c.builtin.client.CoreV1().Events("")})
 	recorder := eventBroadcaster.NewRecorder(kubescheme.Scheme, corev1.EventSource{Component: "controller"})
