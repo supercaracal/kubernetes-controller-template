@@ -53,8 +53,6 @@ jobs:
     name: Image
     timeout-minutes: 15
     runs-on: "ubuntu-latest"
-    env:
-      IMAGE_CACHE_DIR: /tmp/image_cache
     steps:
       - name: Check out code
         uses: actions/checkout@v2
