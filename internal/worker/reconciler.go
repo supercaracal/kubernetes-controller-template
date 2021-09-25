@@ -124,7 +124,7 @@ func (r *Reconciler) create(key string) error {
 	if err != nil {
 		return err
 	}
-	r.recorder.Eventf(parent, corev1.EventTypeNormal, "SuccessfulCreate", "Created resource %s/%s", child.Namespace, child.Name)
+	r.recorder.Eventf(parent, corev1.EventTypeNormal, "SuccessfulCreate", "Created pod %s/%s", child.Namespace, child.Name)
 	klog.V(4).Infof("Created resource %s/%s successfully", child.Namespace, child.Name)
 
 	return r.update(parent)
@@ -202,7 +202,7 @@ func (r *Reconciler) Clean() {
 				continue
 			}
 
-			r.recorder.Eventf(parent, corev1.EventTypeNormal, "SuccessfulDelete", "Deleted resource %s/%s", child.Namespace, child.Name)
+			r.recorder.Eventf(parent, corev1.EventTypeNormal, "SuccessfulDelete", "Deleted pod %s/%s", child.Namespace, child.Name)
 			klog.V(4).Infof("Deleted resource %s/%s successfully", child.Namespace, child.Name)
 		}
 	}

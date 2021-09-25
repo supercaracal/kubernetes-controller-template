@@ -95,17 +95,17 @@ func (c *CustomController) Run(stopCh <-chan struct{}) error {
 	defer utilruntime.HandleCrash()
 	defer c.workQueue.ShutDown()
 
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartStructuredLogging(0)
-	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: c.builtin.client.CoreV1().Events("")})
-	recorder := eventBroadcaster.NewRecorder(kubescheme.Scheme, corev1.EventSource{Component: "controller"})
-
 	c.builtin.factory.Start(stopCh)
 	c.custom.factory.Start(stopCh)
 
 	if ok := cache.WaitForCacheSync(stopCh, c.builtin.pod.informer.HasSynced, c.custom.resource.informer.HasSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
+
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartStructuredLogging(0)
+	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: c.builtin.client.CoreV1().Events("")})
+	recorder := eventBroadcaster.NewRecorder(kubescheme.Scheme, corev1.EventSource{Component: "controller"})
 
 	worker := workers.NewReconciler(
 		&workers.ResourceClient{
@@ -119,6 +119,7 @@ func (c *CustomController) Run(stopCh <-chan struct{}) error {
 		c.workQueue,
 		recorder,
 	)
+
 	go wait.Until(worker.Run, reconcileDuration, stopCh)
 	go wait.Until(worker.Clean, cleanupDuration, stopCh)
 
