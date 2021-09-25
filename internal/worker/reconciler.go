@@ -6,6 +6,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -13,7 +14,6 @@ import (
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	kubeerrors "k8s.io/cri-api/pkg/errors"
 	"k8s.io/klog/v2"
 
 	customapiv1 "github.com/supercaracal/kubernetes-controller-template/pkg/apis/supercaracal/v1"
@@ -30,8 +30,8 @@ type Reconciler struct {
 
 // ResourceClient is
 type ResourceClient struct {
-	Kube   kubernetes.Interface
-	Custom customclient.Interface
+	Builtin kubernetes.Interface
+	Custom  customclient.Interface
 }
 
 // ResourceLister is
@@ -43,6 +43,12 @@ type ResourceLister struct {
 const (
 	resourceName  = "FooBar"
 	childLifetime = 5 * time.Minute
+)
+
+var (
+	delOpts = metav1.DeleteOptions{PropagationPolicy: func(s metav1.DeletionPropagation) *metav1.DeletionPropagation { return &s }(metav1.DeletePropagationBackground)}
+	updOpts = metav1.UpdateOptions{}
+	creOpts = metav1.CreateOptions{}
 )
 
 // NewReconciler is
@@ -118,7 +124,7 @@ func (r *Reconciler) create(key string) error {
 func (r *Reconciler) update(obj *customapiv1.FooBar) (err error) {
 	cpy := obj.DeepCopy()
 	cpy.Status.Succeeded = true
-	_, err = r.client.Custom.SupercaracalV1().FooBars(obj.Namespace).Update(context.TODO(), cpy, metav1.UpdateOptions{})
+	_, err = r.client.Custom.SupercaracalV1().FooBars(obj.Namespace).Update(context.TODO(), cpy, updOpts)
 	return
 }
 
@@ -147,7 +153,7 @@ func (r *Reconciler) createChildPod(parent *customapiv1.FooBar) (*corev1.Pod, er
 		},
 	}
 
-	return r.client.Kube.CoreV1().Pods(parent.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+	return r.client.Builtin.CoreV1().Pods(parent.Namespace).Create(context.TODO(), pod, creOpts)
 }
 
 // Clean is
@@ -160,7 +166,6 @@ func (r *Reconciler) Clean() {
 		return
 	}
 
-	background := metav1.DeletePropagationBackground
 	baseTime := metav1.NewTime(time.Now().Add(-childLifetime))
 
 	for _, parent := range parents {
@@ -185,9 +190,7 @@ func (r *Reconciler) Clean() {
 				continue
 			}
 
-			if err := r.client.Kube.CoreV1().Pods(parent.Namespace).Delete(
-				context.TODO(), child.Name, metav1.DeleteOptions{PropagationPolicy: &background},
-			); err != nil {
+			if err := r.client.Builtin.CoreV1().Pods(parent.Namespace).Delete(context.TODO(), child.Name, delOpts); err != nil {
 				utilruntime.HandleError(err)
 				continue
 			}

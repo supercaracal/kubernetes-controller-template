@@ -32,12 +32,12 @@ const (
 
 // CustomController is
 type CustomController struct {
-	kube      *kubeTool
+	builtin   *builtinTool
 	custom    *customTool
 	workQueue workqueue.RateLimitingInterface
 }
 
-type kubeTool struct {
+type builtinTool struct {
 	client  kubernetes.Interface
 	factory kubeinformers.SharedInformerFactory
 	pod     *podInfo
@@ -65,7 +65,7 @@ func NewCustomController(cfg *rest.Config) (*CustomController, error) {
 		return nil, err
 	}
 
-	kube, err := buildKubeTools(cfg)
+	builtin, err := buildBuiltinTools(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func NewCustomController(cfg *rest.Config) (*CustomController, error) {
 		DeleteFunc: h.OnDelete,
 	})
 
-	return &CustomController{kube: kube, custom: custom, workQueue: wq}, nil
+	return &CustomController{builtin: builtin, custom: custom, workQueue: wq}, nil
 }
 
 // Run is
@@ -91,20 +91,20 @@ func (c *CustomController) Run(stopCh <-chan struct{}) error {
 	defer utilruntime.HandleCrash()
 	defer c.workQueue.ShutDown()
 
-	c.kube.factory.Start(stopCh)
+	c.builtin.factory.Start(stopCh)
 	c.custom.factory.Start(stopCh)
 
-	if ok := cache.WaitForCacheSync(stopCh, c.kube.pod.informer.HasSynced, c.custom.resource.informer.HasSynced); !ok {
+	if ok := cache.WaitForCacheSync(stopCh, c.builtin.pod.informer.HasSynced, c.custom.resource.informer.HasSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
 	worker := workers.NewReconciler(
 		&workers.ResourceClient{
-			Kube:   c.kube.client,
-			Custom: c.custom.client,
+			Builtin: c.builtin.client,
+			Custom:  c.custom.client,
 		},
 		&workers.ResourceLister{
-			Pod:            c.kube.pod.lister,
+			Pod:            c.builtin.pod.lister,
 			CustomResource: c.custom.resource.lister,
 		},
 		c.workQueue,
@@ -119,7 +119,7 @@ func (c *CustomController) Run(stopCh <-chan struct{}) error {
 	return nil
 }
 
-func buildKubeTools(cfg *rest.Config) (*kubeTool, error) {
+func buildBuiltinTools(cfg *rest.Config) (*builtinTool, error) {
 	cli, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		return nil, err
@@ -127,12 +127,9 @@ func buildKubeTools(cfg *rest.Config) (*kubeTool, error) {
 
 	info := kubeinformers.NewSharedInformerFactory(cli, informerReSyncDuration)
 	pod := info.Core().V1().Pods()
+	p := podInfo{informer: pod.Informer(), lister: pod.Lister()}
 
-	return &kubeTool{
-		client:  cli,
-		factory: info,
-		pod:     &podInfo{informer: pod.Informer(), lister: pod.Lister()},
-	}, nil
+	return &builtinTool{client: cli, factory: info, pod: &p}, nil
 }
 
 func buildCustomResourceTools(cfg *rest.Config) (*customTool, error) {
@@ -143,10 +140,7 @@ func buildCustomResourceTools(cfg *rest.Config) (*customTool, error) {
 
 	info := custominformers.NewSharedInformerFactory(cli, informerReSyncDuration)
 	cr := info.Supercaracal().V1().FooBars()
+	r := customResourceInfo{informer: cr.Informer(), lister: cr.Lister()}
 
-	return &customTool{
-		client:   cli,
-		factory:  info,
-		resource: &customResourceInfo{informer: cr.Informer(), lister: cr.Lister()},
-	}, nil
+	return &customTool{client: cli, factory: info, resource: &r}, nil
 }

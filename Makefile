@@ -74,7 +74,7 @@ run:
 
 clean:
 	${QUIET} unlink ${TEMP_DIR}/src/${MOD_PATH}/pkg || true
-	${QUIET} rm -rf ${REPO} main ${TEMP_DIR}
+	${QUIET} rm -rf ${REPO} main ${TEMP_DIR} pkg/generated pkg/apis/*/*/zz_generated.deepcopy.go
 
 build-image:
 	${QUIET} docker build -t ${REPO}:${IMG_TAG} .
