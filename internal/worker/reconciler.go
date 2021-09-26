@@ -125,7 +125,7 @@ func (r *Reconciler) create(key string) error {
 		return err
 	}
 	r.recorder.Eventf(parent, corev1.EventTypeNormal, "SuccessfulCreate", "Created pod %s/%s", child.Namespace, child.Name)
-	klog.V(4).Infof("Created resource %s/%s successfully", child.Namespace, child.Name)
+	klog.V(4).Infof("Created pod %s/%s successfully", child.Namespace, child.Name)
 
 	return r.update(parent)
 }
@@ -140,7 +140,7 @@ func (r *Reconciler) update(obj *customapiv1.FooBar) (err error) {
 func (r *Reconciler) createChildPod(parent *customapiv1.FooBar) (*corev1.Pod, error) {
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            fmt.Sprintf("%s-%d", parent.Name, time.Now().Unix()),
+			Name:            fmt.Sprintf("%s-%d", parent.Name, time.Now().UnixMicro()),
 			Namespace:       parent.Namespace,
 			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(parent, customGroup)},
 		},
@@ -173,37 +173,47 @@ func (r *Reconciler) Clean() {
 		return
 	}
 
+	allPods, err := r.lister.Pod.List(labels.Everything())
+	if err != nil {
+		if !kubeerrors.IsNotFound(err) {
+			utilruntime.HandleError(err)
+		}
+		return
+	}
+
 	baseTime := metav1.NewTime(time.Now().Add(-childLifetime))
 
-	for _, parent := range parents {
-		children, err := r.lister.Pod.Pods(parent.Namespace).List(labels.Everything())
-		if err != nil {
-			if !kubeerrors.IsNotFound(err) {
-				utilruntime.HandleError(err)
-			}
+	var parent *customapiv1.FooBar
+	for _, pod := range allPods {
+		parent = findParent(parents, pod)
+		if parent == nil {
 			continue
 		}
 
-		for _, child := range children {
-			if !metav1.IsControlledBy(child, parent) {
-				continue
-			}
+		if pod.Status.Phase != corev1.PodSucceeded {
+			continue
+		}
 
-			if child.Status.Phase != corev1.PodSucceeded {
-				continue
-			}
+		if baseTime.Before(pod.Status.StartTime) {
+			continue
+		}
 
-			if baseTime.Before(child.Status.StartTime) || baseTime.Equal(child.Status.StartTime) {
-				continue
-			}
+		if err := r.client.Builtin.CoreV1().Pods(parent.Namespace).Delete(context.TODO(), pod.Name, delOpts); err != nil {
+			utilruntime.HandleError(err)
+			continue
+		}
 
-			if err := r.client.Builtin.CoreV1().Pods(parent.Namespace).Delete(context.TODO(), child.Name, delOpts); err != nil {
-				utilruntime.HandleError(err)
-				continue
-			}
+		r.recorder.Eventf(parent, corev1.EventTypeNormal, "SuccessfulDelete", "Deleted pod %s/%s", pod.Namespace, pod.Name)
+		klog.V(4).Infof("Deleted pod %s/%s successfully", pod.Namespace, pod.Name)
+	}
+}
 
-			r.recorder.Eventf(parent, corev1.EventTypeNormal, "SuccessfulDelete", "Deleted pod %s/%s", child.Namespace, child.Name)
-			klog.V(4).Infof("Deleted resource %s/%s successfully", child.Namespace, child.Name)
+func findParent(parents []*customapiv1.FooBar, pod *corev1.Pod) *customapiv1.FooBar {
+	for _, parent := range parents {
+		if metav1.IsControlledBy(pod, parent) {
+			return parent
 		}
 	}
+
+	return nil
 }
