@@ -27,9 +27,9 @@ import (
 )
 
 const (
-	informerReSyncDuration = 5 * time.Second
+	informerReSyncDuration = 10 * time.Second
+	cleanupDuration        = 10 * time.Second
 	reconcileDuration      = 5 * time.Second
-	cleanupDuration        = 1 * time.Minute
 	resourceName           = "FooBars"
 )
 

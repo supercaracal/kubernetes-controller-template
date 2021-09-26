@@ -43,7 +43,7 @@ type ResourceLister struct {
 }
 
 const (
-	childLifetime = 5 * time.Minute
+	childLifetime = 3 * time.Minute
 )
 
 var (
@@ -51,6 +51,7 @@ var (
 	delOpts     = metav1.DeleteOptions{PropagationPolicy: func(s metav1.DeletionPropagation) *metav1.DeletionPropagation { return &s }(metav1.DeletePropagationBackground)}
 	updOpts     = metav1.UpdateOptions{}
 	creOpts     = metav1.CreateOptions{}
+	trueP       = func(b bool) *bool { return &b }(true)
 )
 
 // NewReconciler is
@@ -148,13 +149,11 @@ func (r *Reconciler) createChildPod(parent *customapiv1.FooBar) (*corev1.Pod, er
 			RestartPolicy: corev1.RestartPolicyNever,
 			Containers: []corev1.Container{
 				corev1.Container{
-					Name:    "main",
-					Image:   "gcr.io/distroless/static-debian11:debug-amd64",
-					Command: []string{"echo"},
-					Args:    []string{parent.Spec.Message},
-					SecurityContext: &corev1.SecurityContext{
-						ReadOnlyRootFilesystem: func(b bool) *bool { return &b }(true),
-					},
+					Name:            "main",
+					Image:           "gcr.io/distroless/static-debian11:debug-amd64",
+					Command:         []string{"echo"},
+					Args:            []string{parent.Spec.Message},
+					SecurityContext: &corev1.SecurityContext{ReadOnlyRootFilesystem: trueP},
 				},
 			},
 		},
