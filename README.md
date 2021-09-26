@@ -7,7 +7,7 @@ Kubernetes Controller Template
 This controller has a feature to create a pod to log a message declared by manifest.
 The pod will be deleted automatically by the controller later.
 
-## Running on local host
+## Running controller on local host
 ```
 $ kind create cluster
 $ make apply-manifests
@@ -15,7 +15,7 @@ $ make build
 $ make run
 ```
 
-## Running in Docker
+## Running controller in Docker
 ```
 $ kind create cluster
 $ make apply-manifests
