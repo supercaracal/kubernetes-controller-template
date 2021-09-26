@@ -31,6 +31,7 @@ const (
 	cleanupDuration        = 10 * time.Second
 	reconcileDuration      = 5 * time.Second
 	resourceName           = "FooBars"
+	controllerName         = "kubernetes-controller-template"
 )
 
 // CustomController is
@@ -113,7 +114,7 @@ func (c *CustomController) Run(stopCh <-chan struct{}) error {
 		defer w.Stop()
 	}
 
-	recorder := eventBroadcaster.NewRecorder(kubescheme.Scheme, corev1.EventSource{Component: "controller"})
+	recorder := eventBroadcaster.NewRecorder(kubescheme.Scheme, corev1.EventSource{Component: controllerName})
 
 	worker := workers.NewReconciler(
 		&workers.ResourceClient{
